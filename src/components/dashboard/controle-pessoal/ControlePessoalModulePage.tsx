@@ -1405,113 +1405,113 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-sm font-semibold text-foreground">Linha do tempo diária</p>
-                      <p className="text-xs text-muted-foreground">Visão completa de 24h para {formatDateBR(selectedDate)}</p>
+                      <p className="text-xs text-muted-foreground">Base padrão 06:00–18:00, com expansão automática quando houver compromissos fora desse período.</p>
                     </div>
                     <Badge variant={agendaTimelineItems.length ? 'default' : 'secondary'}>
                       {agendaTimelineItems.length} compromisso(s)
                     </Badge>
                   </div>
 
-                  {agendaTimelineItems.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border bg-background p-6 text-sm text-muted-foreground">
-                      Nenhum compromisso cadastrado para {formatDateBR(selectedDate)}.
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-border bg-background p-3">
-                      <div className="mb-2 flex justify-center">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="h-9 w-9 rounded-full border-border bg-card text-foreground shadow-sm"
-                          onClick={() => scrollTimelineBy(-timelineHourHeight * 2)}
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      <div
-                        ref={timelineScrollRef}
-                        className="relative h-[680px] overflow-y-auto rounded-md border border-border/70 bg-background cursor-grab active:cursor-grabbing select-none"
-                        onMouseDown={handleTimelineDragStart}
-                        onMouseMove={handleTimelineDragMove}
-                        onMouseUp={stopTimelineDrag}
-                        onMouseLeave={stopTimelineDrag}
+                  <div className="rounded-lg border border-border bg-background p-3">
+                    <div className="mb-2 flex justify-center">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-9 w-9 rounded-full border-border bg-card text-foreground shadow-sm"
+                        onClick={() => scrollTimelineBy(-timelineHourHeight * 2)}
                       >
-                        <div className="relative min-h-full" style={{ height: `${(timelineTotalMinutes / 60) * timelineHourHeight}px` }}>
-                          {timelineHours.map((hour) => (
-                            <div
-                              key={hour}
-                              className="absolute inset-x-0"
-                              style={{ top: `${(hour - agendaTimelineBounds.startHour) * timelineHourHeight}px` }}
-                            >
-                              <span className="absolute left-0 -translate-y-1/2 text-sm font-bold text-muted-foreground">
-                                {`${String(hour).padStart(2, '0')}:00`}
-                              </span>
-                              <div className="ml-16 border-t border-border/60" />
-                            </div>
-                          ))}
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                    </div>
 
-                          <div className="absolute inset-y-0 left-[4.5rem] right-2">
-                            {agendaTimelineItems.map((item) => {
-                              const top = ((item.startMinutes - timelineStartMinutes) / 60) * timelineHourHeight;
-                              const height = Math.max(((item.endMinutes - item.startMinutes) / 60) * timelineHourHeight, 56);
-
-                              return (
-                                <div
-                                  key={item.id}
-                                  className="absolute left-0 right-0 overflow-hidden rounded-lg border border-border bg-card shadow-sm"
-                                  style={{ top: `${top}px`, height: `${height}px` }}
-                                >
-                                  <div className="h-full border-l-4 border-primary px-3 py-2.5">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="min-w-0">
-                                        <p className="text-sm font-semibold text-primary">{item.startTime} - {item.endTime}</p>
-                                        <p className="truncate text-base font-semibold text-foreground">{item.title}</p>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8"
-                                          onClick={() => handleEditAgendaRecord(item.id)}
-                                        >
-                                          <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8"
-                                          onClick={() => handleDeleteAgendaRecord(item.id)}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                    <p className="mt-1 truncate text-sm text-muted-foreground">{item.detail}</p>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                    <div
+                      ref={timelineScrollRef}
+                      className="relative h-[680px] overflow-y-auto rounded-md border border-border/70 bg-background cursor-grab active:cursor-grabbing select-none"
+                      onMouseDown={handleTimelineDragStart}
+                      onMouseMove={handleTimelineDragMove}
+                      onMouseUp={stopTimelineDrag}
+                      onMouseLeave={stopTimelineDrag}
+                    >
+                      <div className="relative min-h-full" style={{ height: `${(timelineTotalMinutes / 60) * timelineHourHeight}px` }}>
+                        {timelineHours.map((hour) => (
+                          <div
+                            key={hour}
+                            className="absolute inset-x-0"
+                            style={{ top: `${(hour - agendaTimelineBounds.startHour) * timelineHourHeight}px` }}
+                          >
+                            <span className="absolute left-0 -translate-y-1/2 text-sm font-bold text-muted-foreground">
+                              {`${String(hour).padStart(2, '0')}:00`}
+                            </span>
+                            <div className="ml-16 border-t border-border/60" />
                           </div>
-                        </div>
-                      </div>
+                        ))}
 
-                      <div className="mt-2 flex justify-center">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="h-9 w-9 rounded-full border-border bg-card text-foreground shadow-sm"
-                          onClick={() => scrollTimelineBy(timelineHourHeight * 2)}
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
+                        <div className="absolute inset-y-0 left-[4.5rem] right-2">
+                          {agendaTimelineItems.map((item) => {
+                            const top = ((item.startMinutes - timelineStartMinutes) / 60) * timelineHourHeight;
+                            const height = Math.max(((item.endMinutes - item.startMinutes) / 60) * timelineHourHeight, 56);
+
+                            return (
+                              <div
+                                key={item.id}
+                                className="absolute left-0 right-0 overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+                                style={{ top: `${top}px`, height: `${height}px` }}
+                              >
+                                <div className="h-full border-l-4 border-primary px-3 py-2.5">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-semibold text-primary">{item.startTime} - {item.endTime}</p>
+                                      <p className="truncate text-base font-semibold text-foreground">{item.title}</p>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => handleEditAgendaRecord(item.id)}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => handleDeleteAgendaRecord(item.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <p className="mt-1 truncate text-sm text-muted-foreground">{item.detail}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {agendaTimelineItems.length === 0 ? (
+                          <div className="pointer-events-none absolute inset-x-[4.5rem] top-8 rounded-md border border-dashed border-border bg-card/80 p-3 text-sm text-muted-foreground backdrop-blur-sm">
+                            Nenhum compromisso cadastrado para {formatDateBR(selectedDate)}.
+                          </div>
+                        ) : null}
                       </div>
                     </div>
-                  )}
+
+                    <div className="mt-2 flex justify-center">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-9 w-9 rounded-full border-border bg-card text-foreground shadow-sm"
+                        onClick={() => scrollTimelineBy(timelineHourHeight * 2)}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : isFinancial ? (
