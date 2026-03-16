@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DayContentProps } from 'react-day-picker';
-import { LucideIcon, PlusCircle, CalendarDays, Wallet, Users, FileText, ShoppingCart } from 'lucide-react';
+import { LucideIcon, PlusCircle, CalendarDays, Wallet, Users, FileText, ShoppingCart, Clock3 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import PageHeaderCard from '@/components/dashboard/PageHeaderCard';
+import SimpleTitleBar from '@/components/dashboard/SimpleTitleBar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
