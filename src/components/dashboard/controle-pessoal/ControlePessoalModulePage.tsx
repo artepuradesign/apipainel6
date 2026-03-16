@@ -15,6 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { useAuth } from '@/contexts/AuthContext';
 import { todayBrasilia } from '@/utils/timezone';
 import { formatCpf, formatPhone } from '@/utils/formatters';
+import { apiRequest } from '@/config/api';
 import { toast } from 'sonner';
 
 export type ControlePessoalModuleType = 'agenda' | 'financeiro' | 'novocliente' | 'relatorios' | 'vendasimples';
@@ -28,6 +29,7 @@ interface ControlePessoalRecord {
   id: string;
   title: string;
   date: string;
+  time?: string;
   amount?: number;
   client?: string;
   notes?: string;
@@ -51,6 +53,17 @@ interface ControlePessoalRecord {
   unitPrice?: number;
 }
 
+interface ControlePessoalApiItem {
+  id: number;
+  titulo: string;
+  descricao?: string | null;
+  cliente_nome?: string | null;
+  valor?: number | string | null;
+  data_referencia: string;
+  created_at: string;
+  metadata?: Record<string, unknown> | null;
+}
+
 interface ControlePessoalModulePageProps {
   moduleType: ControlePessoalModuleType;
   title: string;
@@ -64,6 +77,14 @@ const moduleIconMap: Record<ControlePessoalModuleType, LucideIcon> = {
   novocliente: Users,
   relatorios: FileText,
   vendasimples: ShoppingCart,
+};
+
+const moduleEndpointMap: Record<ControlePessoalModuleType, string> = {
+  agenda: '/controlepessoal-agenda',
+  financeiro: '/controlepessoal-financeiro',
+  novocliente: '/controlepessoal-novocliente',
+  relatorios: '/controlepessoal-relatorios',
+  vendasimples: '/controlepessoal-vendasimples',
 };
 
 const financialCategories = ['Vendas', 'Serviços', 'Fornecedores', 'Transporte', 'Marketing', 'Impostos', 'Outros'];
@@ -102,6 +123,17 @@ const fromISODate = (isoDate: string) => {
   return new Date(year, month - 1, day);
 };
 
+const toIsoDateTime = (value?: string) => {
+  if (!value) return new Date().toISOString();
+  return value.includes('T') ? value : value.replace(' ', 'T');
+};
+
+const toTimeMinutes = (time?: string) => {
+  if (!time || !time.includes(':')) return Number.POSITIVE_INFINITY;
+  const [hour, minute] = time.split(':').map(Number);
+  return hour * 60 + minute;
+};
+
 const formatCurrency = (value: number) =>
   value.toLocaleString('pt-BR', {
     style: 'currency',
@@ -109,7 +141,7 @@ const formatCurrency = (value: number) =>
   });
 
 const formatDateTime = (date: string) =>
-  new Date(date).toLocaleString('pt-BR', {
+  new Date(toIsoDateTime(date)).toLocaleString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
