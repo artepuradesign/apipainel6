@@ -553,6 +553,18 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     }));
   }, []);
 
+  const handleOpenAgendaModal = useCallback(() => {
+    resetForm(selectedDate);
+    setIsAgendaModalOpen(true);
+  }, [resetForm, selectedDate]);
+
+  const handleCloseAgendaModal = useCallback(() => {
+    setIsAgendaModalOpen(false);
+    if (editingRecordId) {
+      resetForm(selectedDate);
+    }
+  }, [editingRecordId, resetForm, selectedDate]);
+
   const handleEditAgendaRecord = useCallback((recordId: string) => {
     const target = records.find((item) => item.id === recordId);
     if (!target) {
