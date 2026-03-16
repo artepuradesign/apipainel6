@@ -604,8 +604,13 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       return;
     }
 
-    if (isAgenda && !form.time) {
-      toast.error('Informe a hora do compromisso.');
+    if (isAgenda && (!form.time || !form.endTime)) {
+      toast.error('Informe hora de início e término do compromisso.');
+      return;
+    }
+
+    if (isAgenda && form.time && form.endTime && toTimeMinutes(form.endTime) <= toTimeMinutes(form.time)) {
+      toast.error('A hora de término deve ser maior que a hora de início.');
       return;
     }
 
