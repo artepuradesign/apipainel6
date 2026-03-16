@@ -1933,10 +1933,10 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
         </Card>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className={`grid md:grid-cols-3 ${isAgenda ? 'gap-3 md:gap-4' : 'gap-4'}`}>
         <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">
+          <CardContent className={isAgenda ? 'p-3 sm:p-4' : 'p-4'}>
+            <p className={isAgenda ? 'text-xs sm:text-sm text-muted-foreground' : 'text-sm text-muted-foreground'}>
               {isFinancial
                 ? 'Entradas do mês'
                 : isNewClient
@@ -1947,7 +1947,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                       ? 'Vendas concluídas no mês'
                       : 'Registros hoje'}
             </p>
-            <p className="text-2xl font-bold">
+            <p className={isAgenda ? 'text-xl sm:text-2xl font-bold' : 'text-2xl font-bold'}>
               {isFinancial
                 ? formatCurrency(monthlyFinancial.entradas)
                 : isNewClient
@@ -1962,8 +1962,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">
+          <CardContent className={isAgenda ? 'p-3 sm:p-4' : 'p-4'}>
+            <p className={isAgenda ? 'text-xs sm:text-sm text-muted-foreground' : 'text-sm text-muted-foreground'}>
               {isFinancial
                 ? 'Saídas do mês'
                 : isNewClient
@@ -1974,7 +1974,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                       ? 'Faturamento mensal'
                       : 'Total de registros'}
             </p>
-            <p className="text-2xl font-bold">
+            <p className={isAgenda ? 'text-xl sm:text-2xl font-bold' : 'text-2xl font-bold'}>
               {isFinancial
                 ? formatCurrency(monthlyFinancial.saidas)
                 : isNewClient
@@ -1989,8 +1989,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">
+          <CardContent className={isAgenda ? 'p-3 sm:p-4' : 'p-4'}>
+            <p className={isAgenda ? 'text-xs sm:text-sm text-muted-foreground' : 'text-sm text-muted-foreground'}>
               {isFinancial
                 ? 'Saldo do mês'
                 : isNewClient
@@ -2001,7 +2001,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                       ? 'Ticket médio'
                       : 'Movimentação do mês'}
             </p>
-            <p className="text-2xl font-bold">
+            <p className={isAgenda ? 'text-xl sm:text-2xl font-bold' : 'text-2xl font-bold'}>
               {isFinancial
                 ? formatCurrency(monthlyFinancial.saldo)
                 : isNewClient
