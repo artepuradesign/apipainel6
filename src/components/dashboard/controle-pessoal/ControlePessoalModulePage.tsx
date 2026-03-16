@@ -1550,7 +1550,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           <DialogContent className="sm:max-w-xl">
             <DialogHeader>
               <DialogTitle>{editingRecordId ? 'Editar compromisso' : 'Novo compromisso'}</DialogTitle>
-              <DialogDescription>Preencha os dados com início e término para exibir a duração na linha do tempo.</DialogDescription>
+              <DialogDescription>Arraste o intervalo de horário; períodos já ocupados ficam bloqueados automaticamente.</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
