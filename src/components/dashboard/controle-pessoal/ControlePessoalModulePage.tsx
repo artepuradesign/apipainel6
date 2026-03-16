@@ -747,7 +747,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
-        <Card className={isAgenda ? 'order-2 lg:order-2' : undefined}>
+        {!isAgenda ? (
+        <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Icon className="h-5 w-5 text-primary" />
