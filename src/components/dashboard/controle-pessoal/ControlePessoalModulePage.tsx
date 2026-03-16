@@ -354,6 +354,83 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     });
   }, [isAgenda, recordsForSelectedDate]);
 
+  const timelineScrollRef = useRef<HTMLDivElement | null>(null);
+  const timelineDragStateRef = useRef({ isDragging: false, startY: 0, startScrollTop: 0 });
+
+  const agendaTimelineBounds = useMemo(() => {
+    if (!isAgenda || agendaTimelineItems.length === 0) {
+      return { startHour: 6, endHour: 18 };
+    }
+
+    const earliestHour = Math.floor(Math.min(...agendaTimelineItems.map((item) => item.startMinutes)) / 60);
+    const latestHour = Math.ceil(Math.max(...agendaTimelineItems.map((item) => item.endMinutes)) / 60);
+
+    return {
+      startHour: Math.max(0, Math.min(6, earliestHour)),
+      endHour: Math.min(24, Math.max(18, latestHour)),
+    };
+  }, [agendaTimelineItems, isAgenda]);
+
+  const timelineHourHeight = 56;
+  const timelineStartMinutes = agendaTimelineBounds.startHour * 60;
+  const timelineTotalMinutes = Math.max((agendaTimelineBounds.endHour - agendaTimelineBounds.startHour) * 60, 60);
+
+  const timelineHours = useMemo(
+    () =>
+      Array.from(
+        { length: agendaTimelineBounds.endHour - agendaTimelineBounds.startHour + 1 },
+        (_, index) => agendaTimelineBounds.startHour + index
+      ),
+    [agendaTimelineBounds.endHour, agendaTimelineBounds.startHour]
+  );
+
+  const scrollTimelineBy = useCallback((offset: number) => {
+    const container = timelineScrollRef.current;
+    if (!container) return;
+
+    container.scrollBy({ top: offset, behavior: 'smooth' });
+  }, []);
+
+  const handleTimelineDragStart = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('button')) return;
+
+    const container = timelineScrollRef.current;
+    if (!container) return;
+
+    timelineDragStateRef.current = {
+      isDragging: true,
+      startY: event.clientY,
+      startScrollTop: container.scrollTop,
+    };
+  }, []);
+
+  const handleTimelineDragMove = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const dragState = timelineDragStateRef.current;
+    if (!dragState.isDragging) return;
+
+    const container = timelineScrollRef.current;
+    if (!container) return;
+
+    const deltaY = event.clientY - dragState.startY;
+    container.scrollTop = dragState.startScrollTop - deltaY;
+  }, []);
+
+  const stopTimelineDrag = useCallback(() => {
+    timelineDragStateRef.current.isDragging = false;
+  }, []);
+
+  useEffect(() => {
+    if (!isAgenda) return;
+
+    const container = timelineScrollRef.current;
+    if (!container) return;
+
+    const initialHour = Math.max(6, agendaTimelineBounds.startHour);
+    container.scrollTop = (initialHour - agendaTimelineBounds.startHour) * timelineHourHeight;
+  }, [agendaTimelineBounds.startHour, isAgenda, selectedDate, timelineHourHeight]);
+
   const monthlyFinancial = useMemo(() => {
     if (!isFinancial) return { entradas: 0, saidas: 0, saldo: 0 };
 
