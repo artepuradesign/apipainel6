@@ -1251,7 +1251,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           </CardHeader>
           <CardContent>
             {isAgenda ? (
-              <div className="space-y-4">
+              <div className="grid gap-4 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)] xl:items-start">
                 <div className="w-full rounded-md border border-border bg-card p-2 sm:p-3">
                   <Calendar
                     locale={ptBR}
