@@ -649,6 +649,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
     const metadata = {
       time: form.time,
+      endTime: form.endTime,
       transactionType: isFinancial ? form.transactionType : undefined,
       category: isFinancial ? form.category : undefined,
       paymentMethod: isFinancial || isSimpleSales ? form.paymentMethod : undefined,
