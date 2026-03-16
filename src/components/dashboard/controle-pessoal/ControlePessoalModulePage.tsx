@@ -695,6 +695,9 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       await loadRecords();
       setSelectedDate(form.date);
       resetForm(form.date);
+      if (isAgenda) {
+        setIsAgendaModalOpen(false);
+      }
       toast.success(isEditing ? 'Compromisso atualizado com sucesso.' : 'Registro salvo com sucesso.');
     } catch (error) {
       console.error('Erro ao salvar controle pessoal:', error);
