@@ -1207,8 +1207,9 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           <CardContent>
             {isAgenda ? (
               <div className="space-y-4">
-                <div className="w-full overflow-x-auto rounded-md border border-border bg-card p-2">
+                <div className="w-full rounded-md border border-border bg-card p-2 sm:p-3">
                   <Calendar
+                    locale={ptBR}
                     mode="single"
                     selected={fromISODate(selectedDate)}
                     onSelect={handleDaySelect}
@@ -1216,13 +1217,13 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                     className="w-full p-1 pointer-events-auto"
                     classNames={{
                       months: 'w-full',
-                      month: 'w-full space-y-4',
+                      month: 'w-full space-y-3',
                       table: 'w-full border-collapse',
                       head_row: 'grid grid-cols-7',
-                      row: 'mt-2 grid grid-cols-7',
+                      row: 'mt-1 grid grid-cols-7',
                       head_cell: 'text-muted-foreground rounded-md text-center text-[0.8rem] font-normal',
-                      cell: 'h-10 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
-                      day: 'h-10 w-full p-0 font-normal aria-selected:opacity-100',
+                      cell: 'h-9 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20 sm:h-10',
+                      day: 'h-9 w-full p-0 text-xs font-normal aria-selected:opacity-100 sm:h-10 sm:text-sm',
                     }}
                     modifiers={{ hasAppointments: datesWithAppointments }}
                     modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
