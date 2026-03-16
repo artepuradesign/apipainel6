@@ -60,7 +60,7 @@ const Sidebar = ({
       onClick={handleSidebarClick}
     >
       {/* Botão flutuante circular para expandir/recolher */}
-      {!isMobile && !isTablet && (
+      {!isMobile && (
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
