@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DayContentProps } from 'react-day-picker';
-import { LucideIcon, PlusCircle, CalendarDays, Wallet, Users, FileText, ShoppingCart, Clock3, Pencil, Trash2 } from 'lucide-react';
+import { LucideIcon, Plus, PlusCircle, CalendarDays, Wallet, Users, FileText, ShoppingCart, Clock3, Pencil, Trash2 } from 'lucide-react';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import PageHeaderCard from '@/components/dashboard/PageHeaderCard';
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Calendar } from '@/components/ui/calendar';
 import { useAuth } from '@/contexts/AuthContext';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { todayBrasilia } from '@/utils/timezone';
 import { formatCpf, formatPhone } from '@/utils/formatters';
 import { apiRequest } from '@/config/api';
@@ -31,6 +32,7 @@ interface ControlePessoalRecord {
   title: string;
   date: string;
   time?: string;
+  endTime?: string;
   amount?: number;
   client?: string;
   notes?: string;
@@ -183,10 +185,12 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
   const [selectedDate, setSelectedDate] = useState(todayIso);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAgendaModalOpen, setIsAgendaModalOpen] = useState(false);
   const [form, setForm] = useState({
     title: '',
     date: todayIso,
     time: '09:00',
+    endTime: '10:00',
     amount: '',
     client: '',
     notes: '',
@@ -218,6 +222,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       title: item.titulo,
       date: item.data_referencia,
       time: typeof metadata.time === 'string' ? metadata.time : undefined,
+      endTime: typeof metadata.endTime === 'string' ? metadata.endTime : undefined,
       amount: item.valor !== null && item.valor !== undefined ? Number(item.valor) : undefined,
       client: item.cliente_nome || undefined,
       notes: item.descricao || undefined,
@@ -304,7 +309,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
   }, [records, selectedDate]);
 
   const agendaTimelineItems = useMemo(() => {
-    if (!isAgenda) return [] as Array<{ id: string; time: string; title: string; detail: string }>;
+    if (!isAgenda) return [] as Array<{ id: string; timeLabel: string; title: string; detail: string }>;
 
     return recordsForSelectedDate.map((record) => {
       const parsedDate = new Date(toIsoDateTime(record.createdAt));
@@ -312,11 +317,12 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       const createdAtTime = Number.isNaN(parsedDate.getTime())
         ? fallbackTime
         : parsedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const time = record.time || createdAtTime;
+      const startTime = record.time || createdAtTime;
+      const endTime = record.endTime || '';
 
       return {
         id: record.id,
-        time,
+        timeLabel: endTime ? `${startTime} - ${endTime}` : startTime,
         title: record.title,
         detail: `${record.client || 'Sem cliente'} • ${record.amount ? formatCurrency(record.amount) : 'Sem valor'}`,
       };
@@ -524,6 +530,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       title: '',
       date: baseDate,
       time: '09:00',
+      endTime: '10:00',
       amount: '',
       client: '',
       notes: '',
@@ -547,6 +554,16 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     }));
   }, []);
 
+  const handleOpenAgendaModal = useCallback(() => {
+    resetForm(selectedDate);
+    setIsAgendaModalOpen(true);
+  }, [resetForm, selectedDate]);
+
+  const handleCloseAgendaModal = useCallback(() => {
+    setIsAgendaModalOpen(false);
+    resetForm(selectedDate);
+  }, [resetForm, selectedDate]);
+
   const handleEditAgendaRecord = useCallback((recordId: string) => {
     const target = records.find((item) => item.id === recordId);
     if (!target) {
@@ -561,10 +578,12 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       title: target.title,
       date: target.date,
       time: target.time || '09:00',
+      endTime: target.endTime || '10:00',
       amount: target.amount ? String(target.amount) : '',
       client: target.client || '',
       notes: target.notes || '',
     }));
+    setIsAgendaModalOpen(true);
   }, [records]);
 
   const handleDeleteAgendaRecord = useCallback(async (recordId: string) => {
@@ -596,8 +615,13 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       return;
     }
 
-    if (isAgenda && !form.time) {
-      toast.error('Informe a hora do compromisso.');
+    if (isAgenda && (!form.time || !form.endTime)) {
+      toast.error('Informe hora de início e término do compromisso.');
+      return;
+    }
+
+    if (isAgenda && form.time && form.endTime && toTimeMinutes(form.endTime) <= toTimeMinutes(form.time)) {
+      toast.error('A hora de término deve ser maior que a hora de início.');
       return;
     }
 
@@ -636,6 +660,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
     const metadata = {
       time: form.time,
+      endTime: form.endTime,
       transactionType: isFinancial ? form.transactionType : undefined,
       category: isFinancial ? form.category : undefined,
       paymentMethod: isFinancial || isSimpleSales ? form.paymentMethod : undefined,
@@ -681,6 +706,9 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       await loadRecords();
       setSelectedDate(form.date);
       resetForm(form.date);
+      if (isAgenda) {
+        setIsAgendaModalOpen(false);
+      }
       toast.success(isEditing ? 'Compromisso atualizado com sucesso.' : 'Registro salvo com sucesso.');
     } catch (error) {
       console.error('Erro ao salvar controle pessoal:', error);
@@ -697,6 +725,19 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           title={title}
           subtitle={subtitle}
           icon={<Icon className="h-5 w-5" />}
+          right={(
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleOpenAgendaModal}
+              className="rounded-full h-9 w-9"
+              aria-label="Novo compromisso"
+              title="Novo compromisso"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
           onBack={() => navigate('/dashboard')}
         />
       ) : (
@@ -704,7 +745,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
-        <Card className={isAgenda ? 'order-2 lg:order-2' : undefined}>
+        {!isAgenda ? (
+        <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Icon className="h-5 w-5 text-primary" />
@@ -1187,8 +1229,9 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
             </div>
           </CardContent>
         </Card>
+        ) : null}
 
-        <Card className={isAgenda ? 'order-1 lg:order-1' : undefined}>
+        <Card className={isAgenda ? 'order-1 lg:order-1 xl:col-span-2' : undefined}>
           <CardHeader>
             <CardTitle>
               {isAgenda
@@ -1206,7 +1249,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           </CardHeader>
           <CardContent>
             {isAgenda ? (
-              <div className="space-y-4">
+              <div className="grid gap-4 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)] xl:items-start">
                 <div className="w-full rounded-md border border-border bg-card p-2 sm:p-3">
                   <Calendar
                     locale={ptBR}
@@ -1249,8 +1292,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                   ) : (
                     <div className="space-y-4">
                       {agendaTimelineItems.map((item, index) => (
-                        <div key={item.id} className="grid grid-cols-[58px_minmax(0,1fr)] gap-3">
-                          <p className="text-xs font-semibold text-muted-foreground">{item.time}</p>
+                        <div key={item.id} className="grid grid-cols-[92px_minmax(0,1fr)] gap-3">
+                          <p className="text-xs font-semibold text-muted-foreground">{item.timeLabel}</p>
                           <div className="relative rounded-md border border-border bg-background p-3">
                             <span className="absolute -left-[11px] top-4 h-2.5 w-2.5 rounded-full bg-primary" />
                             {index < agendaTimelineItems.length - 1 ? (
@@ -1443,6 +1486,113 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           </CardContent>
         </Card>
       </div>
+
+      {isAgenda ? (
+        <Dialog open={isAgendaModalOpen} onOpenChange={(open) => (open ? setIsAgendaModalOpen(true) : handleCloseAgendaModal())}>
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>{editingRecordId ? 'Editar compromisso' : 'Novo compromisso'}</DialogTitle>
+              <DialogDescription>Preencha os dados com início e término para exibir a duração na linha do tempo.</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="agenda-titulo">Título</Label>
+                <Input
+                  id="agenda-titulo"
+                  placeholder="Ex.: Reunião com cliente"
+                  value={form.title}
+                  onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2 sm:col-span-1">
+                  <Label htmlFor="agenda-data">Data</Label>
+                  <Input
+                    id="agenda-data"
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => {
+                      const nextDate = e.target.value;
+                      setForm((prev) => ({ ...prev, date: nextDate }));
+                      if (nextDate) setSelectedDate(nextDate);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-1">
+                  <Label htmlFor="agenda-inicio">Início</Label>
+                  <Input
+                    id="agenda-inicio"
+                    type="time"
+                    value={form.time}
+                    onChange={(e) => setForm((prev) => ({ ...prev, time: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-1">
+                  <Label htmlFor="agenda-termino">Término</Label>
+                  <Input
+                    id="agenda-termino"
+                    type="time"
+                    value={form.endTime}
+                    onChange={(e) => setForm((prev) => ({ ...prev, endTime: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="agenda-cliente">Cliente (opcional)</Label>
+                  <Input
+                    id="agenda-cliente"
+                    placeholder="Nome do cliente"
+                    value={form.client}
+                    onChange={(e) => setForm((prev) => ({ ...prev, client: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="agenda-valor">Valor (opcional)</Label>
+                  <Input
+                    id="agenda-valor"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0,00"
+                    value={form.amount}
+                    onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="agenda-observacoes">Observações</Label>
+                <Textarea
+                  id="agenda-observacoes"
+                  placeholder="Anote detalhes importantes para não esquecer"
+                  value={form.notes}
+                  onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button onClick={handleSave} className="w-full" disabled={isSubmitting}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  {editingRecordId ? 'Atualizar compromisso' : 'Salvar compromisso'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={handleCloseAgendaModal}
+                  disabled={isSubmitting}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
 
       <Card>
         <CardHeader>
