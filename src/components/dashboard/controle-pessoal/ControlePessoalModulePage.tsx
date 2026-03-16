@@ -1365,7 +1365,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                       cell: 'h-11 text-center text-sm p-0 relative focus-within:relative focus-within:z-20',
                       day: 'mx-auto flex h-10 w-10 items-center justify-center rounded-full p-0 text-sm font-medium text-foreground transition-colors hover:bg-accent/70',
                       day_selected: 'rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary focus:bg-primary',
-                      day_today: 'rounded-full border border-primary/30 bg-accent text-foreground',
+                      day_today: 'rounded-full bg-success text-success-foreground shadow-sm hover:bg-success focus:bg-success',
                       day_outside: 'text-muted-foreground/60 opacity-80',
                     }}
                     modifiers={{ hasAppointments: datesWithAppointments }}
