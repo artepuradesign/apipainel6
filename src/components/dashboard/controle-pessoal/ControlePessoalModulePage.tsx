@@ -1168,10 +1168,23 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
               />
             </div>
 
-            <Button onClick={handleSave} className="w-full">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Salvar registro
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button onClick={handleSave} className="w-full" disabled={isSubmitting}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                {editingRecordId ? 'Atualizar compromisso' : 'Salvar registro'}
+              </Button>
+              {isAgenda && editingRecordId ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => resetForm(selectedDate)}
+                  disabled={isSubmitting}
+                >
+                  Cancelar edição
+                </Button>
+              ) : null}
+            </div>
           </CardContent>
         </Card>
 
