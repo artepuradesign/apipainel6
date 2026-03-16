@@ -222,6 +222,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       title: item.titulo,
       date: item.data_referencia,
       time: typeof metadata.time === 'string' ? metadata.time : undefined,
+      endTime: typeof metadata.endTime === 'string' ? metadata.endTime : undefined,
       amount: item.valor !== null && item.valor !== undefined ? Number(item.valor) : undefined,
       client: item.cliente_nome || undefined,
       notes: item.descricao || undefined,
