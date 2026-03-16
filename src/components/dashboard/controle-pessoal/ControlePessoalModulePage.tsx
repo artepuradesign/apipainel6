@@ -32,6 +32,7 @@ interface ControlePessoalRecord {
   title: string;
   date: string;
   time?: string;
+  endTime?: string;
   amount?: number;
   client?: string;
   notes?: string;
