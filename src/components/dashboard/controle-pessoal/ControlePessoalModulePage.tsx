@@ -230,12 +230,27 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       source: typeof metadata.source === 'string' ? metadata.source : undefined,
       stage: typeof metadata.stage === 'string' ? (metadata.stage as LeadStage) : undefined,
       nextContact: typeof metadata.nextContact === 'string' ? metadata.nextContact : undefined,
-      potentialValue: typeof metadata.potentialValue === 'number' ? metadata.potentialValue : undefined,
+      potentialValue:
+        typeof metadata.potentialValue === 'number'
+          ? metadata.potentialValue
+          : typeof metadata.potentialValue === 'string'
+            ? Number(metadata.potentialValue)
+            : undefined,
       reportType: typeof metadata.reportType === 'string' ? (metadata.reportType as ReportType) : undefined,
       reportPeriod: typeof metadata.reportPeriod === 'string' ? metadata.reportPeriod : undefined,
       saleStatus: typeof metadata.saleStatus === 'string' ? (metadata.saleStatus as SaleStatus) : undefined,
-      quantity: typeof metadata.quantity === 'number' ? metadata.quantity : undefined,
-      unitPrice: typeof metadata.unitPrice === 'number' ? metadata.unitPrice : undefined,
+      quantity:
+        typeof metadata.quantity === 'number'
+          ? metadata.quantity
+          : typeof metadata.quantity === 'string'
+            ? Number(metadata.quantity)
+            : undefined,
+      unitPrice:
+        typeof metadata.unitPrice === 'number'
+          ? metadata.unitPrice
+          : typeof metadata.unitPrice === 'string'
+            ? Number(metadata.unitPrice)
+            : undefined,
     };
   }, []);
 
