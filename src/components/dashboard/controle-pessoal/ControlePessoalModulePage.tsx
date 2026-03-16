@@ -1079,37 +1079,14 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
               <PlusCircle className="mr-2 h-4 w-4" />
               Salvar registro
             </Button>
-
-            {isAgenda ? (
-              <div className="rounded-md border border-border bg-background p-3">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium">Compromissos em {formatDateBR(selectedDate)}</p>
-                  <Badge variant={recordsForSelectedDate.length ? 'default' : 'outline'}>
-                    {recordsForSelectedDate.length}
-                  </Badge>
-                </div>
-                {recordsForSelectedDate.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Nenhum compromisso para este dia.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {recordsForSelectedDate.map((record) => (
-                      <div key={record.id} className="rounded-md border border-border p-2">
-                        <p className="text-sm font-medium">{record.title}</p>
-                        <p className="text-xs text-muted-foreground">{record.client || 'Sem cliente'} • {record.amount ? formatCurrency(record.amount) : 'Sem valor'}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : null}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={isAgenda ? 'order-1 lg:order-1' : undefined}>
           <CardHeader>
             <CardTitle>
               {isAgenda
-                ? 'Calendário do mês'
+                ? 'Calendário e linha do tempo'
                 : isFinancial
                   ? 'Caixa diário e alertas'
                   : isNewClient
@@ -1134,16 +1111,32 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                   modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
                   components={{ DayContent: AgendaDayContent }}
                 />
-                <div className="rounded-md border border-border bg-background p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm text-muted-foreground">Dia selecionado</p>
-                    <Badge variant="secondary">{formatDateBR(selectedDate)}</Badge>
+
+                <div className="rounded-md border border-border bg-card p-4">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Clock3 className="h-4 w-4 text-primary" />
+                      Linha do tempo • {formatDateBR(selectedDate)}
+                    </div>
+                    <Badge variant={recordsForSelectedDate.length ? 'default' : 'secondary'}>
+                      {recordsForSelectedDate.length || agendaTimelineItems.length}
+                    </Badge>
                   </div>
-                  <p className="mt-2 text-sm">
-                    {recordsForSelectedDate.length === 0
-                      ? 'Dia livre para novos compromissos.'
-                      : `${recordsForSelectedDate.length} compromisso(s) programado(s).`}
-                  </p>
+
+                  <div className="space-y-4">
+                    {agendaTimelineItems.map((item) => (
+                      <div key={item.id} className="grid grid-cols-[58px_minmax(0,1fr)] gap-3">
+                        <p className="text-xs font-semibold text-muted-foreground">{item.time}</p>
+                        <div className="relative rounded-md border border-border bg-background p-3">
+                          <span className="absolute -left-[11px] top-4 h-2.5 w-2.5 rounded-full bg-primary" />
+                          <span className="absolute -left-[7px] top-6 bottom-[-22px] w-px bg-border last:hidden" />
+                          <p className="text-sm font-medium">{item.title}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
+                          {item.isPlaceholder ? <Badge variant="outline" className="mt-2">Livre</Badge> : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : isFinancial ? (
