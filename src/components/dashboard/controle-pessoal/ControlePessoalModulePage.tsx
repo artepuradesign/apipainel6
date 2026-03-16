@@ -583,6 +583,35 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     setForm((prev) => ({ ...prev, date: isoDate }));
   };
 
+  const selectedDateObject = useMemo(() => fromISODate(selectedDate), [selectedDate]);
+  const agendaBaseMonth = useMemo(() => startOfMonth(fromISODate(todayIso)), [todayIso]);
+
+  const agendaCalendarPanels = useMemo(
+    () => [
+      { id: 'previous', month: addMonths(agendaBaseMonth, -1), visibilityClass: 'hidden xl:block' },
+      { id: 'current', month: agendaBaseMonth, visibilityClass: '' },
+      { id: 'next', month: addMonths(agendaBaseMonth, 1), visibilityClass: 'hidden md:block' },
+    ],
+    [agendaBaseMonth]
+  );
+
+  const agendaCalendarClassNames = {
+    months: 'w-full',
+    month: 'w-full space-y-3',
+    caption: 'flex justify-center pt-1 relative items-center',
+    caption_label: 'text-sm font-semibold text-foreground',
+    nav_button: 'h-8 w-8 rounded-md border border-border bg-card text-foreground hover:bg-accent hover:text-accent-foreground',
+    table: 'w-full border-collapse',
+    head_row: 'grid grid-cols-7 gap-0.5',
+    row: 'mt-1 grid grid-cols-7 gap-0.5',
+    head_cell: 'text-muted-foreground rounded-md text-center text-[0.72rem] font-medium uppercase tracking-wider',
+    cell: 'h-11 text-center text-sm p-0 relative focus-within:relative focus-within:z-20',
+    day: 'mx-auto flex h-10 w-10 items-center justify-center rounded-full p-0 text-sm font-medium text-foreground transition-colors hover:bg-accent/70',
+    day_selected: 'rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary focus:bg-primary',
+    day_today: 'rounded-full bg-success text-success-foreground shadow-sm hover:bg-success focus:bg-success',
+    day_outside: 'text-muted-foreground/60 opacity-80',
+  };
+
   const AgendaDayContent = useCallback(
     ({ date, displayMonth }: DayContentProps) => {
       const isoDate = toISODate(date);
