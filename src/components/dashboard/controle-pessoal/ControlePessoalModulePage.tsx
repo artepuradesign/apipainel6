@@ -1489,6 +1489,113 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
         </Card>
       </div>
 
+      {isAgenda ? (
+        <Dialog open={isAgendaModalOpen} onOpenChange={(open) => (open ? setIsAgendaModalOpen(true) : handleCloseAgendaModal())}>
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>{editingRecordId ? 'Editar compromisso' : 'Novo compromisso'}</DialogTitle>
+              <DialogDescription>Preencha os dados com início e término para exibir a duração na linha do tempo.</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="agenda-titulo">Título</Label>
+                <Input
+                  id="agenda-titulo"
+                  placeholder="Ex.: Reunião com cliente"
+                  value={form.title}
+                  onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2 sm:col-span-1">
+                  <Label htmlFor="agenda-data">Data</Label>
+                  <Input
+                    id="agenda-data"
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => {
+                      const nextDate = e.target.value;
+                      setForm((prev) => ({ ...prev, date: nextDate }));
+                      if (nextDate) setSelectedDate(nextDate);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-1">
+                  <Label htmlFor="agenda-inicio">Início</Label>
+                  <Input
+                    id="agenda-inicio"
+                    type="time"
+                    value={form.time}
+                    onChange={(e) => setForm((prev) => ({ ...prev, time: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-1">
+                  <Label htmlFor="agenda-termino">Término</Label>
+                  <Input
+                    id="agenda-termino"
+                    type="time"
+                    value={form.endTime}
+                    onChange={(e) => setForm((prev) => ({ ...prev, endTime: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="agenda-cliente">Cliente (opcional)</Label>
+                  <Input
+                    id="agenda-cliente"
+                    placeholder="Nome do cliente"
+                    value={form.client}
+                    onChange={(e) => setForm((prev) => ({ ...prev, client: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="agenda-valor">Valor (opcional)</Label>
+                  <Input
+                    id="agenda-valor"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0,00"
+                    value={form.amount}
+                    onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="agenda-observacoes">Observações</Label>
+                <Textarea
+                  id="agenda-observacoes"
+                  placeholder="Anote detalhes importantes para não esquecer"
+                  value={form.notes}
+                  onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button onClick={handleSave} className="w-full" disabled={isSubmitting}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  {editingRecordId ? 'Atualizar compromisso' : 'Salvar compromisso'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={handleCloseAgendaModal}
+                  disabled={isSubmitting}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Histórico do módulo</CardTitle>
