@@ -33,14 +33,16 @@ const Sidebar = ({
 }: SidebarProps) => {
   const { config: liquidGlassConfig } = useLiquidGlass();
   const handleSidebarClick = () => {
-    // Em tablets, clicar na sidebar colapsada expande e fixa
-    if (isTablet && collapsed) {
-      setCollapsed(false);
-    }
+    // Tablet deve permanecer recolhido para priorizar área de conteúdo
+    if (isTablet) return;
   };
 
   const handleToggleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isTablet) {
+      setCollapsed(true);
+      return;
+    }
     setCollapsed(!collapsed);
   };
 
