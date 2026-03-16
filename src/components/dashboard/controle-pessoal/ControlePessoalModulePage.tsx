@@ -1081,7 +1081,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
               </>
             ) : (
               <>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2">
                     <Label htmlFor="data">Data</Label>
                     <Input
@@ -1097,6 +1097,18 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                       }}
                     />
                   </div>
+
+                  {isAgenda ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="hora">Hora</Label>
+                      <Input
+                        id="hora"
+                        type="time"
+                        value={form.time}
+                        onChange={(e) => setForm((prev) => ({ ...prev, time: e.target.value }))}
+                      />
+                    </div>
+                  ) : null}
 
                   <div className="space-y-2">
                     <Label htmlFor="valor">Valor (opcional)</Label>
