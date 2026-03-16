@@ -15,6 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { useAuth } from '@/contexts/AuthContext';
 import { todayBrasilia } from '@/utils/timezone';
 import { formatCpf, formatPhone } from '@/utils/formatters';
+import { apiRequest } from '@/config/api';
 import { toast } from 'sonner';
 
 export type ControlePessoalModuleType = 'agenda' | 'financeiro' | 'novocliente' | 'relatorios' | 'vendasimples';
@@ -28,6 +29,7 @@ interface ControlePessoalRecord {
   id: string;
   title: string;
   date: string;
+  time?: string;
   amount?: number;
   client?: string;
   notes?: string;
@@ -51,6 +53,17 @@ interface ControlePessoalRecord {
   unitPrice?: number;
 }
 
+interface ControlePessoalApiItem {
+  id: number;
+  titulo: string;
+  descricao?: string | null;
+  cliente_nome?: string | null;
+  valor?: number | string | null;
+  data_referencia: string;
+  created_at: string;
+  metadata?: Record<string, unknown> | null;
+}
+
 interface ControlePessoalModulePageProps {
   moduleType: ControlePessoalModuleType;
   title: string;
@@ -64,6 +77,14 @@ const moduleIconMap: Record<ControlePessoalModuleType, LucideIcon> = {
   novocliente: Users,
   relatorios: FileText,
   vendasimples: ShoppingCart,
+};
+
+const moduleEndpointMap: Record<ControlePessoalModuleType, string> = {
+  agenda: '/controlepessoal-agenda',
+  financeiro: '/controlepessoal-financeiro',
+  novocliente: '/controlepessoal-novocliente',
+  relatorios: '/controlepessoal-relatorios',
+  vendasimples: '/controlepessoal-vendasimples',
 };
 
 const financialCategories = ['Vendas', 'Serviços', 'Fornecedores', 'Transporte', 'Marketing', 'Impostos', 'Outros'];
@@ -102,6 +123,17 @@ const fromISODate = (isoDate: string) => {
   return new Date(year, month - 1, day);
 };
 
+const toIsoDateTime = (value?: string) => {
+  if (!value) return new Date().toISOString();
+  return value.includes('T') ? value : value.replace(' ', 'T');
+};
+
+const toTimeMinutes = (time?: string) => {
+  if (!time || !time.includes(':')) return Number.POSITIVE_INFINITY;
+  const [hour, minute] = time.split(':').map(Number);
+  return hour * 60 + minute;
+};
+
 const formatCurrency = (value: number) =>
   value.toLocaleString('pt-BR', {
     style: 'currency',
@@ -109,7 +141,7 @@ const formatCurrency = (value: number) =>
   });
 
 const formatDateTime = (date: string) =>
-  new Date(date).toLocaleString('pt-BR', {
+  new Date(toIsoDateTime(date)).toLocaleString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -144,14 +176,14 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
   const isReports = moduleType === 'relatorios';
   const isSimpleSales = moduleType === 'vendasimples';
   const todayIso = useMemo(() => todayBrasilia(), []);
-
-  const storageKey = `controle_pessoal_${moduleType}_${user?.id ?? 'guest'}`;
+  const endpoint = moduleEndpointMap[moduleType];
 
   const [records, setRecords] = useState<ControlePessoalRecord[]>([]);
   const [selectedDate, setSelectedDate] = useState(todayIso);
   const [form, setForm] = useState({
     title: '',
     date: todayIso,
+    time: '09:00',
     amount: '',
     client: '',
     notes: '',
@@ -174,21 +206,83 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     unitPrice: '',
   });
 
-  useEffect(() => {
-    const saved = localStorage.getItem(storageKey);
-    if (!saved) return;
+  const mapApiItemToRecord = useCallback((item: ControlePessoalApiItem): ControlePessoalRecord => {
+    const metadata = (item.metadata || {}) as Record<string, unknown>;
+    const isPaidValue = metadata.isPaid;
 
-    try {
-      const parsed = JSON.parse(saved) as ControlePessoalRecord[];
-      setRecords(Array.isArray(parsed) ? parsed : []);
-    } catch {
-      setRecords([]);
-    }
-  }, [storageKey]);
+    return {
+      id: String(item.id),
+      title: item.titulo,
+      date: item.data_referencia,
+      time: typeof metadata.time === 'string' ? metadata.time : undefined,
+      amount: item.valor !== null && item.valor !== undefined ? Number(item.valor) : undefined,
+      client: item.cliente_nome || undefined,
+      notes: item.descricao || undefined,
+      createdAt: toIsoDateTime(item.created_at),
+      transactionType: typeof metadata.transactionType === 'string' ? (metadata.transactionType as TransactionType) : undefined,
+      category: typeof metadata.category === 'string' ? metadata.category : undefined,
+      paymentMethod: typeof metadata.paymentMethod === 'string' ? metadata.paymentMethod : undefined,
+      dueDate: typeof metadata.dueDate === 'string' ? metadata.dueDate : undefined,
+      isPaid: typeof isPaidValue === 'boolean' ? isPaidValue : isPaidValue === 'true' || isPaidValue === 1,
+      phone: typeof metadata.phone === 'string' ? metadata.phone : undefined,
+      email: typeof metadata.email === 'string' ? metadata.email : undefined,
+      document: typeof metadata.document === 'string' ? metadata.document : undefined,
+      source: typeof metadata.source === 'string' ? metadata.source : undefined,
+      stage: typeof metadata.stage === 'string' ? (metadata.stage as LeadStage) : undefined,
+      nextContact: typeof metadata.nextContact === 'string' ? metadata.nextContact : undefined,
+      potentialValue:
+        typeof metadata.potentialValue === 'number'
+          ? metadata.potentialValue
+          : typeof metadata.potentialValue === 'string'
+            ? Number(metadata.potentialValue)
+            : undefined,
+      reportType: typeof metadata.reportType === 'string' ? (metadata.reportType as ReportType) : undefined,
+      reportPeriod: typeof metadata.reportPeriod === 'string' ? metadata.reportPeriod : undefined,
+      saleStatus: typeof metadata.saleStatus === 'string' ? (metadata.saleStatus as SaleStatus) : undefined,
+      quantity:
+        typeof metadata.quantity === 'number'
+          ? metadata.quantity
+          : typeof metadata.quantity === 'string'
+            ? Number(metadata.quantity)
+            : undefined,
+      unitPrice:
+        typeof metadata.unitPrice === 'number'
+          ? metadata.unitPrice
+          : typeof metadata.unitPrice === 'string'
+            ? Number(metadata.unitPrice)
+            : undefined,
+    };
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(records));
-  }, [records, storageKey]);
+    let active = true;
+
+    const loadRecords = async () => {
+      if (!user?.id) {
+        setRecords([]);
+        return;
+      }
+
+      try {
+        const response = await apiRequest<any>(`${endpoint}?limit=100&offset=0`, { method: 'GET' });
+        const items = Array.isArray(response?.data?.items) ? (response.data.items as ControlePessoalApiItem[]) : [];
+
+        if (!active) return;
+        setRecords(items.map(mapApiItemToRecord));
+      } catch (error) {
+        if (!active) return;
+        setRecords([]);
+        toast.error('Não foi possível carregar os registros da agenda.');
+        console.error('Erro ao carregar controle pessoal:', error);
+      }
+    };
+
+    loadRecords();
+
+    return () => {
+      active = false;
+    };
+  }, [endpoint, mapApiItemToRecord, user?.id]);
 
   useEffect(() => {
     setForm((prev) => ({ ...prev, date: prev.date || selectedDate }));
@@ -208,7 +302,11 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
   const recordsForSelectedDate = useMemo(() => {
     return records
       .filter((record) => record.date === selectedDate)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      .sort((a, b) => {
+        const timeDiff = toTimeMinutes(a.time) - toTimeMinutes(b.time);
+        if (timeDiff !== 0) return timeDiff;
+        return toIsoDateTime(a.createdAt).localeCompare(toIsoDateTime(b.createdAt));
+      });
   }, [records, selectedDate]);
 
   const agendaTimelineItems = useMemo(() => {
@@ -216,11 +314,12 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
     if (recordsForSelectedDate.length > 0) {
       return recordsForSelectedDate.map((record) => {
-        const parsedDate = new Date(record.createdAt);
+        const parsedDate = new Date(toIsoDateTime(record.createdAt));
         const fallbackTime = '09:00';
-        const time = Number.isNaN(parsedDate.getTime())
+        const createdAtTime = Number.isNaN(parsedDate.getTime())
           ? fallbackTime
           : parsedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const time = record.time || createdAtTime;
 
         return {
           id: record.id,
@@ -434,9 +533,14 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     [appointmentCountByDate]
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.title.trim() || !form.date) {
       toast.error('Preencha o título e a data para salvar.');
+      return;
+    }
+
+    if (isAgenda && !form.time) {
+      toast.error('Informe a hora do compromisso.');
       return;
     }
 
@@ -465,21 +569,16 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     }
 
     const computedSaleAmount = (Number(form.quantity || '0') || 0) * (Number(form.unitPrice || '0') || 0);
+    const finalAmount = isSimpleSales
+      ? Number(form.amount || '0') > 0
+        ? Number(form.amount)
+        : computedSaleAmount
+      : form.amount
+        ? Number(form.amount)
+        : 0;
 
-    const newRecord: ControlePessoalRecord = {
-      id: crypto.randomUUID(),
-      title: form.title.trim(),
-      date: form.date,
-      amount: isSimpleSales
-        ? Number(form.amount || '0') > 0
-          ? Number(form.amount)
-          : computedSaleAmount
-        : form.amount
-          ? Number(form.amount)
-          : undefined,
-      client: form.client.trim() || undefined,
-      notes: form.notes.trim() || undefined,
-      createdAt: new Date().toISOString(),
+    const metadata = {
+      time: form.time,
       transactionType: isFinancial ? form.transactionType : undefined,
       category: isFinancial ? form.category : undefined,
       paymentMethod: isFinancial || isSimpleSales ? form.paymentMethod : undefined,
@@ -499,33 +598,56 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       unitPrice: isSimpleSales ? Number(form.unitPrice || '0') || undefined : undefined,
     };
 
-    setRecords((prev) => [newRecord, ...prev]);
-    setSelectedDate(form.date);
-    setForm((prev) => ({
-      ...prev,
-      title: '',
-      amount: '',
-      client: '',
-      notes: '',
-      transactionType: 'entrada',
-      category: financialCategories[0],
-      paymentMethod: financialPaymentMethods[0],
-      dueDate: prev.date,
-      isPaid: false,
-      phone: '',
-      email: '',
-      document: '',
-      source: clientSources[0],
-      stage: 'novo',
-      nextContact: prev.date,
-      potentialValue: '',
-      reportType: 'faturamento',
-      reportPeriod: todayBrasilia().slice(0, 7),
-      saleStatus: 'pendente',
-      quantity: '1',
-      unitPrice: '',
-    }));
-    toast.success('Registro salvo com sucesso.');
+    try {
+      const response = await apiRequest<any>(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({
+          titulo: form.title.trim(),
+          data_referencia: form.date,
+          descricao: form.notes.trim() || null,
+          cliente_nome: form.client.trim() || null,
+          valor: finalAmount,
+          status: 'pendente',
+          metadata,
+        }),
+      });
+
+      if (!response?.success || !response?.data) {
+        throw new Error(response?.error || 'Falha ao salvar registro.');
+      }
+
+      const newRecord = mapApiItemToRecord(response.data as ControlePessoalApiItem);
+      setRecords((prev) => [newRecord, ...prev]);
+      setSelectedDate(form.date);
+      setForm((prev) => ({
+        ...prev,
+        title: '',
+        amount: '',
+        client: '',
+        notes: '',
+        transactionType: 'entrada',
+        category: financialCategories[0],
+        paymentMethod: financialPaymentMethods[0],
+        dueDate: prev.date,
+        isPaid: false,
+        phone: '',
+        email: '',
+        document: '',
+        source: clientSources[0],
+        stage: 'novo',
+        nextContact: prev.date,
+        potentialValue: '',
+        reportType: 'faturamento',
+        reportPeriod: todayBrasilia().slice(0, 7),
+        saleStatus: 'pendente',
+        quantity: '1',
+        unitPrice: '',
+      }));
+      toast.success('Registro salvo com sucesso.');
+    } catch (error) {
+      console.error('Erro ao salvar controle pessoal:', error);
+      toast.error('Não foi possível salvar no banco de dados.');
+    }
   };
 
   return (
@@ -541,88 +663,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
         <PageHeaderCard title={title} subtitle={subtitle} />
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">
-              {isFinancial
-                ? 'Entradas do mês'
-                : isNewClient
-                  ? 'Novos clientes no mês'
-                  : isReports
-                    ? 'Indicadores do mês'
-                    : isSimpleSales
-                      ? 'Vendas concluídas no mês'
-                      : 'Registros hoje'}
-            </p>
-            <p className="text-2xl font-bold">
-              {isFinancial
-                ? formatCurrency(monthlyFinancial.entradas)
-                : isNewClient
-                  ? newClientInsights.monthlyNewClients
-                  : isReports
-                    ? reportsInsights.monthlyCount
-                    : isSimpleSales
-                      ? simpleSalesInsights.monthlySalesCount
-                      : stats.todayCount}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">
-              {isFinancial
-                ? 'Saídas do mês'
-                : isNewClient
-                  ? 'Follow-ups para hoje'
-                  : isReports
-                    ? 'Média por indicador'
-                    : isSimpleSales
-                      ? 'Faturamento mensal'
-                      : 'Total de registros'}
-            </p>
-            <p className="text-2xl font-bold">
-              {isFinancial
-                ? formatCurrency(monthlyFinancial.saidas)
-                : isNewClient
-                  ? newClientInsights.followupsToday
-                  : isReports
-                    ? formatCurrency(reportsInsights.averageValue)
-                    : isSimpleSales
-                      ? formatCurrency(simpleSalesInsights.monthlyRevenue)
-                      : stats.total}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">
-              {isFinancial
-                ? 'Saldo do mês'
-                : isNewClient
-                  ? 'Pipeline ativo estimado'
-                  : isReports
-                    ? 'Resultado estimado'
-                    : isSimpleSales
-                      ? 'Ticket médio'
-                      : 'Movimentação do mês'}
-            </p>
-            <p className="text-2xl font-bold">
-              {isFinancial
-                ? formatCurrency(monthlyFinancial.saldo)
-                : isNewClient
-                  ? formatCurrency(newClientInsights.activePipelineValue)
-                  : isReports
-                    ? formatCurrency(reportsInsights.monthlyResult)
-                    : isSimpleSales
-                      ? formatCurrency(simpleSalesInsights.averageTicket)
-                      : formatCurrency(stats.monthlyTotal)}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
         <Card className={isAgenda ? 'order-2 lg:order-2' : undefined}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -974,7 +1015,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
               </>
             ) : (
               <>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2">
                     <Label htmlFor="data">Data</Label>
                     <Input
@@ -990,6 +1031,18 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                       }}
                     />
                   </div>
+
+                  {isAgenda ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="hora">Hora</Label>
+                      <Input
+                        id="hora"
+                        type="time"
+                        value={form.time}
+                        onChange={(e) => setForm((prev) => ({ ...prev, time: e.target.value }))}
+                      />
+                    </div>
+                  ) : null}
 
                   <div className="space-y-2">
                     <Label htmlFor="valor">Valor (opcional)</Label>
@@ -1101,16 +1154,28 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           <CardContent>
             {isAgenda ? (
               <div className="space-y-4">
-                <Calendar
-                  mode="single"
-                  selected={fromISODate(selectedDate)}
-                  onSelect={handleDaySelect}
-                  defaultMonth={fromISODate(selectedDate)}
-                  className="w-full p-3 pointer-events-auto"
-                  modifiers={{ hasAppointments: datesWithAppointments }}
-                  modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
-                  components={{ DayContent: AgendaDayContent }}
-                />
+                <div className="w-full overflow-x-auto rounded-md border border-border bg-card p-2">
+                  <Calendar
+                    mode="single"
+                    selected={fromISODate(selectedDate)}
+                    onSelect={handleDaySelect}
+                    defaultMonth={fromISODate(selectedDate)}
+                    className="w-full p-1 pointer-events-auto"
+                    classNames={{
+                      months: 'w-full',
+                      month: 'w-full space-y-4',
+                      table: 'w-full border-collapse',
+                      head_row: 'grid grid-cols-7',
+                      row: 'mt-2 grid grid-cols-7',
+                      head_cell: 'text-muted-foreground rounded-md text-center text-[0.8rem] font-normal',
+                      cell: 'h-10 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
+                      day: 'h-10 w-full p-0 font-normal aria-selected:opacity-100',
+                    }}
+                    modifiers={{ hasAppointments: datesWithAppointments }}
+                    modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
+                    components={{ DayContent: AgendaDayContent }}
+                  />
+                </div>
 
                 <div className="rounded-md border border-border bg-card p-4">
                   <div className="mb-4 flex items-center justify-between gap-3">
@@ -1423,6 +1488,89 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           )}
         </CardContent>
       </Card>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              {isFinancial
+                ? 'Entradas do mês'
+                : isNewClient
+                  ? 'Novos clientes no mês'
+                  : isReports
+                    ? 'Indicadores do mês'
+                    : isSimpleSales
+                      ? 'Vendas concluídas no mês'
+                      : 'Registros hoje'}
+            </p>
+            <p className="text-2xl font-bold">
+              {isFinancial
+                ? formatCurrency(monthlyFinancial.entradas)
+                : isNewClient
+                  ? newClientInsights.monthlyNewClients
+                  : isReports
+                    ? reportsInsights.monthlyCount
+                    : isSimpleSales
+                      ? simpleSalesInsights.monthlySalesCount
+                      : stats.todayCount}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              {isFinancial
+                ? 'Saídas do mês'
+                : isNewClient
+                  ? 'Follow-ups para hoje'
+                  : isReports
+                    ? 'Média por indicador'
+                    : isSimpleSales
+                      ? 'Faturamento mensal'
+                      : 'Total de registros'}
+            </p>
+            <p className="text-2xl font-bold">
+              {isFinancial
+                ? formatCurrency(monthlyFinancial.saidas)
+                : isNewClient
+                  ? newClientInsights.followupsToday
+                  : isReports
+                    ? formatCurrency(reportsInsights.averageValue)
+                    : isSimpleSales
+                      ? formatCurrency(simpleSalesInsights.monthlyRevenue)
+                      : stats.total}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              {isFinancial
+                ? 'Saldo do mês'
+                : isNewClient
+                  ? 'Pipeline ativo estimado'
+                  : isReports
+                    ? 'Resultado estimado'
+                    : isSimpleSales
+                      ? 'Ticket médio'
+                      : 'Movimentação do mês'}
+            </p>
+            <p className="text-2xl font-bold">
+              {isFinancial
+                ? formatCurrency(monthlyFinancial.saldo)
+                : isNewClient
+                  ? formatCurrency(newClientInsights.activePipelineValue)
+                  : isReports
+                    ? formatCurrency(reportsInsights.monthlyResult)
+                    : isSimpleSales
+                      ? formatCurrency(simpleSalesInsights.averageTicket)
+                      : formatCurrency(stats.monthlyTotal)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
