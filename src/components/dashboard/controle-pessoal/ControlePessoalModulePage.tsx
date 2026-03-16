@@ -535,10 +535,10 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       const isOutsideMonth = date.getMonth() !== displayMonth.getMonth();
 
       return (
-        <div className="relative flex h-9 w-9 items-center justify-center">
+        <div className="relative flex h-10 w-10 items-center justify-center">
           <span className="font-semibold tabular-nums">{date.getDate()}</span>
           {appointmentsInDate > 0 && !isOutsideMonth ? (
-            <span className="absolute -bottom-1.5 right-0 inline-flex min-w-4 items-center justify-center rounded-full border border-success-border bg-success px-1 text-[10px] font-bold text-success-foreground shadow-sm">
+            <span className="absolute -bottom-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-sm border border-border bg-foreground px-1 text-[10px] font-bold leading-none text-background shadow-sm">
               {appointmentsInDate}
             </span>
           ) : null}
@@ -1308,10 +1308,10 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                       head_row: 'grid grid-cols-7 gap-0.5',
                       row: 'mt-1 grid grid-cols-7 gap-0.5',
                       head_cell: 'text-muted-foreground rounded-md text-center text-[0.72rem] font-medium uppercase tracking-wider',
-                      cell: 'h-10 text-center text-sm p-0 relative first:[&:has([aria-selected])]:rounded-l-lg last:[&:has([aria-selected])]:rounded-r-lg focus-within:relative focus-within:z-20',
-                      day: 'h-10 w-full rounded-lg p-0 text-sm font-medium text-foreground transition-colors hover:bg-accent/70',
-                      day_selected: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary focus:bg-primary',
-                      day_today: 'border border-primary/30 bg-accent text-foreground',
+                      cell: 'h-11 text-center text-sm p-0 relative focus-within:relative focus-within:z-20',
+                      day: 'mx-auto flex h-10 w-10 items-center justify-center rounded-full p-0 text-sm font-medium text-foreground transition-colors hover:bg-accent/70',
+                      day_selected: 'rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary focus:bg-primary',
+                      day_today: 'rounded-full border border-primary/30 bg-accent text-foreground',
                       day_outside: 'text-muted-foreground/60 opacity-80',
                     }}
                     modifiers={{ hasAppointments: datesWithAppointments }}
