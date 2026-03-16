@@ -304,33 +304,23 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
   }, [records, selectedDate]);
 
   const agendaTimelineItems = useMemo(() => {
-    if (!isAgenda) return [] as Array<{ id: string; time: string; title: string; detail: string; isPlaceholder: boolean }>;
+    if (!isAgenda) return [] as Array<{ id: string; time: string; title: string; detail: string }>;
 
-    if (recordsForSelectedDate.length > 0) {
-      return recordsForSelectedDate.map((record) => {
-        const parsedDate = new Date(toIsoDateTime(record.createdAt));
-        const fallbackTime = '09:00';
-        const createdAtTime = Number.isNaN(parsedDate.getTime())
-          ? fallbackTime
-          : parsedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        const time = record.time || createdAtTime;
+    return recordsForSelectedDate.map((record) => {
+      const parsedDate = new Date(toIsoDateTime(record.createdAt));
+      const fallbackTime = '09:00';
+      const createdAtTime = Number.isNaN(parsedDate.getTime())
+        ? fallbackTime
+        : parsedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const time = record.time || createdAtTime;
 
-        return {
-          id: record.id,
-          time,
-          title: record.title,
-          detail: `${record.client || 'Sem cliente'} • ${record.amount ? formatCurrency(record.amount) : 'Sem valor'}`,
-          isPlaceholder: false,
-        };
-      });
-    }
-
-    return [
-      { id: 'slot-08', time: '08:00', title: 'Planejamento do dia', detail: 'Defina prioridades e blocos de foco.', isPlaceholder: true },
-      { id: 'slot-10', time: '10:00', title: 'Horário livre', detail: 'Espaço aberto para novos compromissos.', isPlaceholder: true },
-      { id: 'slot-14', time: '14:00', title: 'Horário livre', detail: 'Use para retornos ou follow-ups.', isPlaceholder: true },
-      { id: 'slot-17', time: '17:00', title: 'Revisão rápida', detail: 'Feche pendências e organize o próximo dia.', isPlaceholder: true },
-    ];
+      return {
+        id: record.id,
+        time,
+        title: record.title,
+        detail: `${record.client || 'Sem cliente'} • ${record.amount ? formatCurrency(record.amount) : 'Sem valor'}`,
+      };
+    });
   }, [isAgenda, recordsForSelectedDate]);
 
   const monthlyFinancial = useMemo(() => {
