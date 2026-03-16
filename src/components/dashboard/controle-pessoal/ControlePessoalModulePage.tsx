@@ -5,6 +5,7 @@ import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import PageHeaderCard from '@/components/dashboard/PageHeaderCard';
 import SimpleTitleBar from '@/components/dashboard/SimpleTitleBar';
+import AgendaTimeRangePicker, { hasRangeConflict, timeToMinutes } from '@/components/dashboard/controle-pessoal/AgendaTimeRangePicker';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
