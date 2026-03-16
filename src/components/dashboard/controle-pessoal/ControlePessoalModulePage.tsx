@@ -1231,8 +1231,9 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
             </div>
           </CardContent>
         </Card>
+        ) : null}
 
-        <Card className={isAgenda ? 'order-1 lg:order-1' : undefined}>
+        <Card className={isAgenda ? 'order-1 lg:order-1 xl:col-span-2' : undefined}>
           <CardHeader>
             <CardTitle>
               {isAgenda
