@@ -536,9 +536,9 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
       return (
         <div className="relative flex h-9 w-9 items-center justify-center">
-          <span>{date.getDate()}</span>
+          <span className="font-medium">{date.getDate()}</span>
           {appointmentsInDate > 0 && !isOutsideMonth ? (
-            <span className="absolute -bottom-1 right-0 inline-flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+            <span className="absolute -bottom-1 right-0 inline-flex min-w-4 items-center justify-center rounded-full border border-success-border bg-success px-1 text-[10px] font-semibold text-success-foreground shadow-sm">
               {appointmentsInDate}
             </span>
           ) : null}
@@ -1292,16 +1292,22 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                     selected={fromISODate(selectedDate)}
                     onSelect={handleDaySelect}
                     defaultMonth={fromISODate(selectedDate)}
-                    className="w-full p-1 pointer-events-auto"
+                    className="w-full rounded-xl border border-border/60 bg-card p-1 pointer-events-auto shadow-sm"
                     classNames={{
                       months: 'w-full',
                       month: 'w-full space-y-3',
+                      caption: 'flex justify-center pt-1 relative items-center',
+                      caption_label: 'text-sm font-semibold text-foreground',
+                      nav_button: 'h-8 w-8 rounded-md border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground',
                       table: 'w-full border-collapse',
                       head_row: 'grid grid-cols-7',
                       row: 'mt-1 grid grid-cols-7',
-                      head_cell: 'text-muted-foreground rounded-md text-center text-[0.8rem] font-normal',
-                      cell: 'h-9 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20 sm:h-10',
-                      day: 'h-9 w-full p-0 text-xs font-normal aria-selected:opacity-100 sm:h-10 sm:text-sm',
+                      head_cell: 'text-muted-foreground rounded-md text-center text-[0.78rem] font-medium uppercase tracking-wide',
+                      cell: 'h-9 text-center text-sm p-0 relative first:[&:has([aria-selected])]:rounded-l-lg last:[&:has([aria-selected])]:rounded-r-lg focus-within:relative focus-within:z-20 sm:h-10',
+                      day: 'h-9 w-full rounded-md p-0 text-xs font-medium text-foreground transition-colors hover:bg-accent/70 sm:h-10 sm:text-sm',
+                      day_selected: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary focus:bg-primary',
+                      day_today: 'border border-primary/30 bg-accent text-foreground',
+                      day_outside: 'text-muted-foreground/60 opacity-80',
                     }}
                     modifiers={{ hasAppointments: datesWithAppointments }}
                     modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
