@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DayContentProps } from 'react-day-picker';
-import { LucideIcon, PlusCircle, CalendarDays, Wallet, Users, FileText, ShoppingCart, Clock3 } from 'lucide-react';
+import { LucideIcon, PlusCircle, CalendarDays, Wallet, Users, FileText, ShoppingCart, Clock3, Pencil, Trash2 } from 'lucide-react';
+import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import PageHeaderCard from '@/components/dashboard/PageHeaderCard';
 import SimpleTitleBar from '@/components/dashboard/SimpleTitleBar';
@@ -180,6 +181,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
   const [records, setRecords] = useState<ControlePessoalRecord[]>([]);
   const [selectedDate, setSelectedDate] = useState(todayIso);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     title: '',
     date: todayIso,
@@ -254,35 +257,26 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     };
   }, []);
 
-  useEffect(() => {
-    let active = true;
+  const loadRecords = useCallback(async () => {
+    if (!user?.id) {
+      setRecords([]);
+      return;
+    }
 
-    const loadRecords = async () => {
-      if (!user?.id) {
-        setRecords([]);
-        return;
-      }
-
-      try {
-        const response = await apiRequest<any>(`${endpoint}?limit=100&offset=0`, { method: 'GET' });
-        const items = Array.isArray(response?.data?.items) ? (response.data.items as ControlePessoalApiItem[]) : [];
-
-        if (!active) return;
-        setRecords(items.map(mapApiItemToRecord));
-      } catch (error) {
-        if (!active) return;
-        setRecords([]);
-        toast.error('Não foi possível carregar os registros da agenda.');
-        console.error('Erro ao carregar controle pessoal:', error);
-      }
-    };
-
-    loadRecords();
-
-    return () => {
-      active = false;
-    };
+    try {
+      const response = await apiRequest<any>(`${endpoint}?limit=100&offset=0`, { method: 'GET' });
+      const items = Array.isArray(response?.data?.items) ? (response.data.items as ControlePessoalApiItem[]) : [];
+      setRecords(items.map(mapApiItemToRecord));
+    } catch (error) {
+      setRecords([]);
+      toast.error('Não foi possível carregar os registros da agenda.');
+      console.error('Erro ao carregar controle pessoal:', error);
+    }
   }, [endpoint, mapApiItemToRecord, user?.id]);
+
+  useEffect(() => {
+    void loadRecords();
+  }, [loadRecords]);
 
   useEffect(() => {
     setForm((prev) => ({ ...prev, date: prev.date || selectedDate }));
@@ -310,33 +304,23 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
   }, [records, selectedDate]);
 
   const agendaTimelineItems = useMemo(() => {
-    if (!isAgenda) return [] as Array<{ id: string; time: string; title: string; detail: string; isPlaceholder: boolean }>;
+    if (!isAgenda) return [] as Array<{ id: string; time: string; title: string; detail: string }>;
 
-    if (recordsForSelectedDate.length > 0) {
-      return recordsForSelectedDate.map((record) => {
-        const parsedDate = new Date(toIsoDateTime(record.createdAt));
-        const fallbackTime = '09:00';
-        const createdAtTime = Number.isNaN(parsedDate.getTime())
-          ? fallbackTime
-          : parsedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        const time = record.time || createdAtTime;
+    return recordsForSelectedDate.map((record) => {
+      const parsedDate = new Date(toIsoDateTime(record.createdAt));
+      const fallbackTime = '09:00';
+      const createdAtTime = Number.isNaN(parsedDate.getTime())
+        ? fallbackTime
+        : parsedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const time = record.time || createdAtTime;
 
-        return {
-          id: record.id,
-          time,
-          title: record.title,
-          detail: `${record.client || 'Sem cliente'} • ${record.amount ? formatCurrency(record.amount) : 'Sem valor'}`,
-          isPlaceholder: false,
-        };
-      });
-    }
-
-    return [
-      { id: 'slot-08', time: '08:00', title: 'Planejamento do dia', detail: 'Defina prioridades e blocos de foco.', isPlaceholder: true },
-      { id: 'slot-10', time: '10:00', title: 'Horário livre', detail: 'Espaço aberto para novos compromissos.', isPlaceholder: true },
-      { id: 'slot-14', time: '14:00', title: 'Horário livre', detail: 'Use para retornos ou follow-ups.', isPlaceholder: true },
-      { id: 'slot-17', time: '17:00', title: 'Revisão rápida', detail: 'Feche pendências e organize o próximo dia.', isPlaceholder: true },
-    ];
+      return {
+        id: record.id,
+        time,
+        title: record.title,
+        detail: `${record.client || 'Sem cliente'} • ${record.amount ? formatCurrency(record.amount) : 'Sem valor'}`,
+      };
+    });
   }, [isAgenda, recordsForSelectedDate]);
 
   const monthlyFinancial = useMemo(() => {
@@ -533,6 +517,79 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     [appointmentCountByDate]
   );
 
+  const resetForm = useCallback((baseDate: string) => {
+    setEditingRecordId(null);
+    setForm((prev) => ({
+      ...prev,
+      title: '',
+      date: baseDate,
+      time: '09:00',
+      amount: '',
+      client: '',
+      notes: '',
+      transactionType: 'entrada',
+      category: financialCategories[0],
+      paymentMethod: financialPaymentMethods[0],
+      dueDate: baseDate,
+      isPaid: false,
+      phone: '',
+      email: '',
+      document: '',
+      source: clientSources[0],
+      stage: 'novo',
+      nextContact: baseDate,
+      potentialValue: '',
+      reportType: 'faturamento',
+      reportPeriod: todayBrasilia().slice(0, 7),
+      saleStatus: 'pendente',
+      quantity: '1',
+      unitPrice: '',
+    }));
+  }, []);
+
+  const handleEditAgendaRecord = useCallback((recordId: string) => {
+    const target = records.find((item) => item.id === recordId);
+    if (!target) {
+      toast.error('Compromisso não encontrado para edição.');
+      return;
+    }
+
+    setEditingRecordId(target.id);
+    setSelectedDate(target.date);
+    setForm((prev) => ({
+      ...prev,
+      title: target.title,
+      date: target.date,
+      time: target.time || '09:00',
+      amount: target.amount ? String(target.amount) : '',
+      client: target.client || '',
+      notes: target.notes || '',
+    }));
+  }, [records]);
+
+  const handleDeleteAgendaRecord = useCallback(async (recordId: string) => {
+    const target = records.find((item) => item.id === recordId);
+    if (!target) return;
+
+    if (!window.confirm(`Excluir o compromisso "${target.title}"?`)) return;
+
+    try {
+      const response = await apiRequest<any>(`${endpoint}/${recordId}`, { method: 'DELETE' });
+      if (!response?.success) {
+        throw new Error(response?.error || 'Falha ao excluir compromisso.');
+      }
+
+      await loadRecords();
+      if (editingRecordId === recordId) {
+        resetForm(selectedDate);
+      }
+      toast.success('Compromisso excluído com sucesso.');
+    } catch (error) {
+      console.error('Erro ao excluir compromisso:', error);
+      toast.error('Não foi possível excluir o compromisso.');
+    }
+  }, [editingRecordId, endpoint, loadRecords, records, resetForm, selectedDate]);
+
   const handleSave = async () => {
     if (!form.title.trim() || !form.date) {
       toast.error('Preencha o título e a data para salvar.');
@@ -598,55 +655,38 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       unitPrice: isSimpleSales ? Number(form.unitPrice || '0') || undefined : undefined,
     };
 
+    const payload = {
+      titulo: form.title.trim(),
+      data_referencia: form.date,
+      descricao: form.notes.trim() || null,
+      cliente_nome: form.client.trim() || null,
+      valor: finalAmount,
+      status: 'pendente',
+      metadata,
+    };
+
+    setIsSubmitting(true);
+
     try {
-      const response = await apiRequest<any>(endpoint, {
-        method: 'POST',
-        body: JSON.stringify({
-          titulo: form.title.trim(),
-          data_referencia: form.date,
-          descricao: form.notes.trim() || null,
-          cliente_nome: form.client.trim() || null,
-          valor: finalAmount,
-          status: 'pendente',
-          metadata,
-        }),
+      const isEditing = Boolean(editingRecordId);
+      const response = await apiRequest<any>(isEditing ? `${endpoint}/${editingRecordId}` : endpoint, {
+        method: isEditing ? 'PUT' : 'POST',
+        body: JSON.stringify(payload),
       });
 
-      if (!response?.success || !response?.data) {
+      if (!response?.success) {
         throw new Error(response?.error || 'Falha ao salvar registro.');
       }
 
-      const newRecord = mapApiItemToRecord(response.data as ControlePessoalApiItem);
-      setRecords((prev) => [newRecord, ...prev]);
+      await loadRecords();
       setSelectedDate(form.date);
-      setForm((prev) => ({
-        ...prev,
-        title: '',
-        amount: '',
-        client: '',
-        notes: '',
-        transactionType: 'entrada',
-        category: financialCategories[0],
-        paymentMethod: financialPaymentMethods[0],
-        dueDate: prev.date,
-        isPaid: false,
-        phone: '',
-        email: '',
-        document: '',
-        source: clientSources[0],
-        stage: 'novo',
-        nextContact: prev.date,
-        potentialValue: '',
-        reportType: 'faturamento',
-        reportPeriod: todayBrasilia().slice(0, 7),
-        saleStatus: 'pendente',
-        quantity: '1',
-        unitPrice: '',
-      }));
-      toast.success('Registro salvo com sucesso.');
+      resetForm(form.date);
+      toast.success(isEditing ? 'Compromisso atualizado com sucesso.' : 'Registro salvo com sucesso.');
     } catch (error) {
       console.error('Erro ao salvar controle pessoal:', error);
       toast.error('Não foi possível salvar no banco de dados.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -665,13 +705,13 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
         <Card className={isAgenda ? 'order-2 lg:order-2' : undefined}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Icon className="h-5 w-5 text-primary" />
-              {isAgenda ? 'Novo compromisso' : formTitle}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Icon className="h-5 w-5 text-primary" />
+                {isAgenda ? (editingRecordId ? 'Editar compromisso' : 'Novo compromisso') : formTitle}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="titulo">
                 {isNewClient ? 'Nome do cliente' : isReports ? 'Indicador / métrica' : isSimpleSales ? 'Produto / serviço' : 'Título'}
@@ -1128,10 +1168,23 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
               />
             </div>
 
-            <Button onClick={handleSave} className="w-full">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Salvar registro
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button onClick={handleSave} className="w-full" disabled={isSubmitting}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                {editingRecordId ? 'Atualizar compromisso' : 'Salvar registro'}
+              </Button>
+              {isAgenda && editingRecordId ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => resetForm(selectedDate)}
+                  disabled={isSubmitting}
+                >
+                  Cancelar edição
+                </Button>
+              ) : null}
+            </div>
           </CardContent>
         </Card>
 
@@ -1154,8 +1207,9 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           <CardContent>
             {isAgenda ? (
               <div className="space-y-4">
-                <div className="w-full overflow-x-auto rounded-md border border-border bg-card p-2">
+                <div className="w-full rounded-md border border-border bg-card p-2 sm:p-3">
                   <Calendar
+                    locale={ptBR}
                     mode="single"
                     selected={fromISODate(selectedDate)}
                     onSelect={handleDaySelect}
@@ -1163,13 +1217,13 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                     className="w-full p-1 pointer-events-auto"
                     classNames={{
                       months: 'w-full',
-                      month: 'w-full space-y-4',
+                      month: 'w-full space-y-3',
                       table: 'w-full border-collapse',
                       head_row: 'grid grid-cols-7',
-                      row: 'mt-2 grid grid-cols-7',
+                      row: 'mt-1 grid grid-cols-7',
                       head_cell: 'text-muted-foreground rounded-md text-center text-[0.8rem] font-normal',
-                      cell: 'h-10 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
-                      day: 'h-10 w-full p-0 font-normal aria-selected:opacity-100',
+                      cell: 'h-9 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20 sm:h-10',
+                      day: 'h-9 w-full p-0 text-xs font-normal aria-selected:opacity-100 sm:h-10 sm:text-sm',
                     }}
                     modifiers={{ hasAppointments: datesWithAppointments }}
                     modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
@@ -1188,22 +1242,49 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                     </Badge>
                   </div>
 
-                  <div className="space-y-4">
-                    {agendaTimelineItems.map((item, index) => (
-                      <div key={item.id} className="grid grid-cols-[58px_minmax(0,1fr)] gap-3">
-                        <p className="text-xs font-semibold text-muted-foreground">{item.time}</p>
-                        <div className="relative rounded-md border border-border bg-background p-3">
-                          <span className="absolute -left-[11px] top-4 h-2.5 w-2.5 rounded-full bg-primary" />
-                          {index < agendaTimelineItems.length - 1 ? (
-                            <span className="absolute -left-[7px] top-6 bottom-[-22px] w-px bg-border" />
-                          ) : null}
-                          <p className="text-sm font-medium">{item.title}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
-                          {item.isPlaceholder ? <Badge variant="outline" className="mt-2">Livre</Badge> : null}
+                  {agendaTimelineItems.length === 0 ? (
+                    <div className="rounded-md border border-dashed border-border bg-background p-4 text-sm text-muted-foreground">
+                      Nenhum compromisso cadastrado para {formatDateBR(selectedDate)}.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {agendaTimelineItems.map((item, index) => (
+                        <div key={item.id} className="grid grid-cols-[58px_minmax(0,1fr)] gap-3">
+                          <p className="text-xs font-semibold text-muted-foreground">{item.time}</p>
+                          <div className="relative rounded-md border border-border bg-background p-3">
+                            <span className="absolute -left-[11px] top-4 h-2.5 w-2.5 rounded-full bg-primary" />
+                            {index < agendaTimelineItems.length - 1 ? (
+                              <span className="absolute -left-[7px] top-6 bottom-[-22px] w-px bg-border" />
+                            ) : null}
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <p className="text-sm font-medium">{item.title}</p>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleEditAgendaRecord(item.id)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleDeleteAgendaRecord(item.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : isFinancial ? (
