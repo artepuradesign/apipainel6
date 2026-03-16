@@ -535,10 +535,10 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       const isOutsideMonth = date.getMonth() !== displayMonth.getMonth();
 
       return (
-        <div className="relative flex h-9 w-9 items-center justify-center">
+        <div className="relative flex h-10 w-10 items-center justify-center">
           <span className="font-semibold tabular-nums">{date.getDate()}</span>
           {appointmentsInDate > 0 && !isOutsideMonth ? (
-            <span className="absolute -bottom-1.5 right-0 inline-flex min-w-4 items-center justify-center rounded-full border border-success-border bg-success px-1 text-[10px] font-bold text-success-foreground shadow-sm">
+            <span className="absolute -bottom-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-sm border border-border bg-foreground px-1 text-[10px] font-bold leading-none text-background shadow-sm">
               {appointmentsInDate}
             </span>
           ) : null}
