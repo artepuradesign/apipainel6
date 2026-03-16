@@ -206,6 +206,60 @@ class ControlePessoal {
         return $stmt->rowCount() > 0;
     }
 
+    public function findAgendaConflicts($userId, $date, $startTime, $endTime, $excludeId = null) {
+        $sql = "SELECT id, titulo, metadata
+                FROM {$this->table}
+                WHERE user_id = ?
+                  AND modulo = 'agenda'
+                  AND data_referencia = ?";
+
+        $params = [(int)$userId, $date];
+
+        if ($excludeId !== null) {
+            $sql .= ' AND id <> ?';
+            $params[] = (int)$excludeId;
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        $candidateStart = $this->timeToMinutes($startTime);
+        $candidateEnd = $this->timeToMinutes($endTime);
+
+        if ($candidateEnd <= $candidateStart) {
+            return [['id' => null, 'titulo' => 'intervalo inválido']];
+        }
+
+        $conflicts = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $metadata = !empty($row['metadata']) ? json_decode($row['metadata'], true) : [];
+            $existingStart = $this->timeToMinutes($metadata['time'] ?? null);
+            $existingEnd = $this->timeToMinutes($metadata['endTime'] ?? null);
+
+            if ($existingEnd <= $existingStart) {
+                continue;
+            }
+
+            if ($candidateStart < $existingEnd && $candidateEnd > $existingStart) {
+                $conflicts[] = [
+                    'id' => (int)$row['id'],
+                    'titulo' => $row['titulo'] ?? 'Compromisso existente',
+                ];
+            }
+        }
+
+        return $conflicts;
+    }
+
+    private function timeToMinutes($time) {
+        if (!is_string($time) || strpos($time, ':') === false) {
+            return 0;
+        }
+
+        [$hour, $minute] = array_map('intval', explode(':', $time));
+        return max(0, min(1440, ($hour * 60) + $minute));
+    }
+
     public function getStats($userId, $modulo = null, $canViewAll = false) {
         $where = [];
         $params = [];
