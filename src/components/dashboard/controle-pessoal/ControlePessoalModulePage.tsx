@@ -572,6 +572,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       client: target.client || '',
       notes: target.notes || '',
     }));
+    setIsAgendaModalOpen(true);
   }, [records]);
 
   const handleDeleteAgendaRecord = useCallback(async (recordId: string) => {
