@@ -645,9 +645,19 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       return;
     }
 
-    if (isAgenda && form.time && form.endTime && toTimeMinutes(form.endTime) <= toTimeMinutes(form.time)) {
-      toast.error('A hora de término deve ser maior que a hora de início.');
-      return;
+    if (isAgenda && form.time && form.endTime) {
+      const startMinutes = timeToMinutes(form.time);
+      const endMinutes = timeToMinutes(form.endTime);
+
+      if (endMinutes <= startMinutes) {
+        toast.error('A hora de término deve ser maior que a hora de início.');
+        return;
+      }
+
+      if (hasRangeConflict(startMinutes, endMinutes, agendaOccupiedRangesForFormDate)) {
+        toast.error('Este horário já está reservado. Escolha outro intervalo.');
+        return;
+      }
     }
 
     if (isFinancial && (!form.amount || Number(form.amount) <= 0)) {
