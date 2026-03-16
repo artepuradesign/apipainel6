@@ -309,7 +309,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
   }, [records, selectedDate]);
 
   const agendaTimelineItems = useMemo(() => {
-    if (!isAgenda) return [] as Array<{ id: string; time: string; title: string; detail: string }>;
+    if (!isAgenda) return [] as Array<{ id: string; timeLabel: string; title: string; detail: string }>;
 
     return recordsForSelectedDate.map((record) => {
       const parsedDate = new Date(toIsoDateTime(record.createdAt));
@@ -317,11 +317,12 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       const createdAtTime = Number.isNaN(parsedDate.getTime())
         ? fallbackTime
         : parsedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const time = record.time || createdAtTime;
+      const startTime = record.time || createdAtTime;
+      const endTime = record.endTime || '';
 
       return {
         id: record.id,
-        time,
+        timeLabel: endTime ? `${startTime} - ${endTime}` : startTime,
         title: record.title,
         detail: `${record.client || 'Sem cliente'} • ${record.amount ? formatCurrency(record.amount) : 'Sem valor'}`,
       };
