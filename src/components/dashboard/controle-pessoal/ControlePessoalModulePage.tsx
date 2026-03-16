@@ -1220,16 +1220,28 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           <CardContent>
             {isAgenda ? (
               <div className="space-y-4">
-                <Calendar
-                  mode="single"
-                  selected={fromISODate(selectedDate)}
-                  onSelect={handleDaySelect}
-                  defaultMonth={fromISODate(selectedDate)}
-                  className="w-full p-3 pointer-events-auto"
-                  modifiers={{ hasAppointments: datesWithAppointments }}
-                  modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
-                  components={{ DayContent: AgendaDayContent }}
-                />
+                <div className="w-full overflow-x-auto rounded-md border border-border bg-card p-2">
+                  <Calendar
+                    mode="single"
+                    selected={fromISODate(selectedDate)}
+                    onSelect={handleDaySelect}
+                    defaultMonth={fromISODate(selectedDate)}
+                    className="w-full p-1 pointer-events-auto"
+                    classNames={{
+                      months: 'w-full',
+                      month: 'w-full space-y-4',
+                      table: 'w-full border-collapse',
+                      head_row: 'grid grid-cols-7',
+                      row: 'mt-2 grid grid-cols-7',
+                      head_cell: 'text-muted-foreground rounded-md text-center text-[0.8rem] font-normal',
+                      cell: 'h-10 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
+                      day: 'h-10 w-full p-0 font-normal aria-selected:opacity-100',
+                    }}
+                    modifiers={{ hasAppointments: datesWithAppointments }}
+                    modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
+                    components={{ DayContent: AgendaDayContent }}
+                  />
+                </div>
 
                 <div className="rounded-md border border-border bg-card p-4">
                   <div className="mb-4 flex items-center justify-between gap-3">
