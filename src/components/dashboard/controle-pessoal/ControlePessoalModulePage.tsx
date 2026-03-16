@@ -1241,22 +1241,49 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                     </Badge>
                   </div>
 
-                  <div className="space-y-4">
-                    {agendaTimelineItems.map((item, index) => (
-                      <div key={item.id} className="grid grid-cols-[58px_minmax(0,1fr)] gap-3">
-                        <p className="text-xs font-semibold text-muted-foreground">{item.time}</p>
-                        <div className="relative rounded-md border border-border bg-background p-3">
-                          <span className="absolute -left-[11px] top-4 h-2.5 w-2.5 rounded-full bg-primary" />
-                          {index < agendaTimelineItems.length - 1 ? (
-                            <span className="absolute -left-[7px] top-6 bottom-[-22px] w-px bg-border" />
-                          ) : null}
-                          <p className="text-sm font-medium">{item.title}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
-                          {item.isPlaceholder ? <Badge variant="outline" className="mt-2">Livre</Badge> : null}
+                  {agendaTimelineItems.length === 0 ? (
+                    <div className="rounded-md border border-dashed border-border bg-background p-4 text-sm text-muted-foreground">
+                      Nenhum compromisso cadastrado para {formatDateBR(selectedDate)}.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {agendaTimelineItems.map((item, index) => (
+                        <div key={item.id} className="grid grid-cols-[58px_minmax(0,1fr)] gap-3">
+                          <p className="text-xs font-semibold text-muted-foreground">{item.time}</p>
+                          <div className="relative rounded-md border border-border bg-background p-3">
+                            <span className="absolute -left-[11px] top-4 h-2.5 w-2.5 rounded-full bg-primary" />
+                            {index < agendaTimelineItems.length - 1 ? (
+                              <span className="absolute -left-[7px] top-6 bottom-[-22px] w-px bg-border" />
+                            ) : null}
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <p className="text-sm font-medium">{item.title}</p>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleEditAgendaRecord(item.id)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleDeleteAgendaRecord(item.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : isFinancial ? (
