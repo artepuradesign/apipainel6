@@ -179,6 +179,25 @@ class ControlePessoalController {
                 Response::notFound('Registro não encontrado');
             }
 
+            $targetModulo = isset($input['modulo']) ? (string)$input['modulo'] : (string)($exists['modulo'] ?? '');
+            $targetDate = isset($input['data_referencia']) ? trim((string)$input['data_referencia']) : (string)($exists['data_referencia'] ?? '');
+            $existingMetadata = is_array($exists['metadata']) ? $exists['metadata'] : [];
+            $incomingMetadata = isset($input['metadata']) && is_array($input['metadata']) ? $input['metadata'] : [];
+            $mergedMetadata = array_merge($existingMetadata, $incomingMetadata);
+
+            if ($targetModulo === 'agenda') {
+                $startTime = isset($mergedMetadata['time']) ? (string)$mergedMetadata['time'] : '';
+                $endTime = isset($mergedMetadata['endTime']) ? (string)$mergedMetadata['endTime'] : '';
+
+                if ($startTime !== '' && $endTime !== '') {
+                    $targetUserId = (int)($exists['user_id'] ?? $currentUserId);
+                    $conflicts = $this->model->findAgendaConflicts($targetUserId, $targetDate, $startTime, $endTime, (int)$id);
+                    if (!empty($conflicts)) {
+                        Response::error('Já existe compromisso neste intervalo de horário.', 422);
+                    }
+                }
+            }
+
             $updated = $this->model->updateRecord((int)$id, $input, $currentUserId, $canViewAll);
             if (!$updated) {
                 Response::error('Nenhuma alteração foi aplicada', 400);
