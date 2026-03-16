@@ -530,7 +530,16 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
   return (
     <div className="space-y-6">
-      <PageHeaderCard title={title} subtitle={subtitle} />
+      {isAgenda ? (
+        <SimpleTitleBar
+          title={title}
+          subtitle={subtitle}
+          icon={<Icon className="h-5 w-5" />}
+          onBack={() => navigate('/dashboard')}
+        />
+      ) : (
+        <PageHeaderCard title={title} subtitle={subtitle} />
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -614,11 +623,11 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <Card>
+        <Card className={isAgenda ? 'order-2 lg:order-2' : undefined}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Icon className="h-5 w-5 text-primary" />
-              {formTitle}
+              {isAgenda ? 'Novo compromisso' : formTitle}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
