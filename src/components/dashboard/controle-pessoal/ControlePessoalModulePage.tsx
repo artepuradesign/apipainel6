@@ -185,6 +185,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
   const [selectedDate, setSelectedDate] = useState(todayIso);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAgendaModalOpen, setIsAgendaModalOpen] = useState(false);
   const [form, setForm] = useState({
     title: '',
     date: todayIso,
