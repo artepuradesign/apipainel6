@@ -1808,131 +1808,133 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
         </Dialog>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico do módulo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {records.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum registro salvo até o momento.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data cadastro</TableHead>
-                  <TableHead>{isNewClient ? 'Cliente' : isReports ? 'Indicador' : isSimpleSales ? 'Venda' : 'Título'}</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  {isFinancial ? (
-                    <>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead>Vencimento</TableHead>
-                      <TableHead>Status</TableHead>
-                    </>
-                  ) : isNewClient ? (
-                    <>
-                      <TableHead>Contato</TableHead>
-                      <TableHead>Funil</TableHead>
-                      <TableHead>Próx. contato</TableHead>
-                    </>
-                  ) : isReports ? (
-                    <>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Período</TableHead>
-                      <TableHead>Data referência</TableHead>
-                    </>
-                  ) : isSimpleSales ? (
-                    <>
-                      <TableHead>Qtd.</TableHead>
-                      <TableHead>Unitário</TableHead>
-                      <TableHead>Pagamento</TableHead>
-                      <TableHead>Status</TableHead>
-                    </>
-                  ) : (
-                    <TableHead>Data referência</TableHead>
-                  )}
-                  <TableHead>{isNewClient ? 'Potencial' : isReports ? 'Valor indicador' : 'Valor'}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {records.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell>{formatDateTime(record.createdAt)}</TableCell>
-                    <TableCell className="font-medium">{record.title}</TableCell>
-                    <TableCell>{record.client || '-'}</TableCell>
+      {!isAgenda ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Histórico do módulo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {records.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum registro salvo até o momento.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data cadastro</TableHead>
+                    <TableHead>{isNewClient ? 'Cliente' : isReports ? 'Indicador' : isSimpleSales ? 'Venda' : 'Título'}</TableHead>
+                    <TableHead>Cliente</TableHead>
                     {isFinancial ? (
                       <>
-                        <TableCell>
-                          <Badge variant={record.transactionType === 'saida' ? 'destructive' : 'default'}>
-                            {record.transactionType === 'saida' ? 'Saída' : 'Entrada'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{record.category || '-'}</TableCell>
-                        <TableCell>{record.dueDate || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant={record.isPaid ? 'secondary' : 'outline'}>
-                            {record.isPaid ? 'Quitado' : 'Pendente'}
-                          </Badge>
-                        </TableCell>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Categoria</TableHead>
+                        <TableHead>Vencimento</TableHead>
+                        <TableHead>Status</TableHead>
                       </>
                     ) : isNewClient ? (
                       <>
-                        <TableCell>{record.phone || record.email || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant={isClosedLead(record.stage) ? 'secondary' : 'default'}>
-                            {leadStages.find((stage) => stage.value === record.stage)?.label || 'Novo lead'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{record.nextContact ? formatDateBR(record.nextContact) : '-'}</TableCell>
+                        <TableHead>Contato</TableHead>
+                        <TableHead>Funil</TableHead>
+                        <TableHead>Próx. contato</TableHead>
                       </>
                     ) : isReports ? (
                       <>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {reportTypes.find((type) => type.value === record.reportType)?.label || 'Indicador'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{record.reportPeriod || record.date.slice(0, 7)}</TableCell>
-                        <TableCell>{record.date}</TableCell>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Período</TableHead>
+                        <TableHead>Data referência</TableHead>
                       </>
                     ) : isSimpleSales ? (
                       <>
-                        <TableCell>{record.quantity || 1}</TableCell>
-                        <TableCell>{record.unitPrice ? formatCurrency(record.unitPrice) : '-'}</TableCell>
-                        <TableCell>{record.paymentMethod || '-'}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              record.saleStatus === 'pago'
-                                ? 'secondary'
-                                : record.saleStatus === 'cancelado'
-                                  ? 'destructive'
-                                  : 'outline'
-                            }
-                          >
-                            {saleStatuses.find((status) => status.value === record.saleStatus)?.label || 'Pendente'}
-                          </Badge>
-                        </TableCell>
+                        <TableHead>Qtd.</TableHead>
+                        <TableHead>Unitário</TableHead>
+                        <TableHead>Pagamento</TableHead>
+                        <TableHead>Status</TableHead>
                       </>
                     ) : (
-                      <TableCell>{record.date}</TableCell>
+                      <TableHead>Data referência</TableHead>
                     )}
-                    <TableCell>
-                      {isNewClient
-                        ? record.potentialValue
-                          ? formatCurrency(record.potentialValue)
-                          : '-'
-                        : record.amount
-                          ? formatCurrency(record.amount)
-                          : '-'}
-                    </TableCell>
+                    <TableHead>{isNewClient ? 'Potencial' : isReports ? 'Valor indicador' : 'Valor'}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {records.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell>{formatDateTime(record.createdAt)}</TableCell>
+                      <TableCell className="font-medium">{record.title}</TableCell>
+                      <TableCell>{record.client || '-'}</TableCell>
+                      {isFinancial ? (
+                        <>
+                          <TableCell>
+                            <Badge variant={record.transactionType === 'saida' ? 'destructive' : 'default'}>
+                              {record.transactionType === 'saida' ? 'Saída' : 'Entrada'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{record.category || '-'}</TableCell>
+                          <TableCell>{record.dueDate || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant={record.isPaid ? 'secondary' : 'outline'}>
+                              {record.isPaid ? 'Quitado' : 'Pendente'}
+                            </Badge>
+                          </TableCell>
+                        </>
+                      ) : isNewClient ? (
+                        <>
+                          <TableCell>{record.phone || record.email || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant={isClosedLead(record.stage) ? 'secondary' : 'default'}>
+                              {leadStages.find((stage) => stage.value === record.stage)?.label || 'Novo lead'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{record.nextContact ? formatDateBR(record.nextContact) : '-'}</TableCell>
+                        </>
+                      ) : isReports ? (
+                        <>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {reportTypes.find((type) => type.value === record.reportType)?.label || 'Indicador'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{record.reportPeriod || record.date.slice(0, 7)}</TableCell>
+                          <TableCell>{record.date}</TableCell>
+                        </>
+                      ) : isSimpleSales ? (
+                        <>
+                          <TableCell>{record.quantity || 1}</TableCell>
+                          <TableCell>{record.unitPrice ? formatCurrency(record.unitPrice) : '-'}</TableCell>
+                          <TableCell>{record.paymentMethod || '-'}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                record.saleStatus === 'pago'
+                                  ? 'secondary'
+                                  : record.saleStatus === 'cancelado'
+                                    ? 'destructive'
+                                    : 'outline'
+                              }
+                            >
+                              {saleStatuses.find((status) => status.value === record.saleStatus)?.label || 'Pendente'}
+                            </Badge>
+                          </TableCell>
+                        </>
+                      ) : (
+                        <TableCell>{record.date}</TableCell>
+                      )}
+                      <TableCell>
+                        {isNewClient
+                          ? record.potentialValue
+                            ? formatCurrency(record.potentialValue)
+                            : '-'
+                          : record.amount
+                            ? formatCurrency(record.amount)
+                            : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
