@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DayContentProps } from 'react-day-picker';
-import { LucideIcon, Plus, PlusCircle, CalendarDays, Wallet, Users, FileText, ShoppingCart, Pencil, Trash2 } from 'lucide-react';
+import { LucideIcon, Plus, PlusCircle, CalendarDays, Wallet, Users, FileText, ShoppingCart, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import PageHeaderCard from '@/components/dashboard/PageHeaderCard';
