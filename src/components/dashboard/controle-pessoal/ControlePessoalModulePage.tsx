@@ -747,7 +747,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       toast.success(isEditing ? 'Compromisso atualizado com sucesso.' : 'Registro salvo com sucesso.');
     } catch (error) {
       console.error('Erro ao salvar controle pessoal:', error);
-      toast.error('Não foi possível salvar no banco de dados.');
+      toast.error(error instanceof Error ? error.message : 'Não foi possível salvar no banco de dados.');
     } finally {
       setIsSubmitting(false);
     }
