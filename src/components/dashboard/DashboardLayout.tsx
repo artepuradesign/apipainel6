@@ -53,11 +53,11 @@ const DashboardLayout = ({
     return false;
   });
   
-  // Definir estado inicial apenas UMA VEZ no mount
+  // Ajustar automaticamente sidebar por breakpoint
   useEffect(() => {
-    // Apenas colapsado em mobile
-    setCollapsed(window.innerWidth < 768);
-  }, []);
+    // Mobile e tablet: recolhida | Desktop: expandida
+    setCollapsed(isMobile || isTablet);
+  }, [isMobile, isTablet]);
   
   // Prevenir duplicação de notificações
   useNotificationDuplicationPrevention();
