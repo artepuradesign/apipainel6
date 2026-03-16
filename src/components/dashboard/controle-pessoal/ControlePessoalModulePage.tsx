@@ -588,9 +588,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
   const agendaCalendarPanels = useMemo(
     () => [
-      { id: 'previous', month: addMonths(agendaBaseMonth, -1), visibilityClass: 'hidden xl:block' },
-      { id: 'current', month: agendaBaseMonth, visibilityClass: '' },
-      { id: 'next', month: addMonths(agendaBaseMonth, 1), visibilityClass: 'hidden md:block' },
+      { id: 'current', month: agendaBaseMonth, title: 'Mês atual' },
+      { id: 'next', month: addMonths(agendaBaseMonth, 1), title: 'Próximo mês' },
     ],
     [agendaBaseMonth]
   );
