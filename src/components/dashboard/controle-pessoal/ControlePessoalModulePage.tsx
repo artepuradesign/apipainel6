@@ -517,6 +517,79 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     [appointmentCountByDate]
   );
 
+  const resetForm = useCallback((baseDate: string) => {
+    setEditingRecordId(null);
+    setForm((prev) => ({
+      ...prev,
+      title: '',
+      date: baseDate,
+      time: '09:00',
+      amount: '',
+      client: '',
+      notes: '',
+      transactionType: 'entrada',
+      category: financialCategories[0],
+      paymentMethod: financialPaymentMethods[0],
+      dueDate: baseDate,
+      isPaid: false,
+      phone: '',
+      email: '',
+      document: '',
+      source: clientSources[0],
+      stage: 'novo',
+      nextContact: baseDate,
+      potentialValue: '',
+      reportType: 'faturamento',
+      reportPeriod: todayBrasilia().slice(0, 7),
+      saleStatus: 'pendente',
+      quantity: '1',
+      unitPrice: '',
+    }));
+  }, []);
+
+  const handleEditAgendaRecord = useCallback((recordId: string) => {
+    const target = records.find((item) => item.id === recordId);
+    if (!target) {
+      toast.error('Compromisso não encontrado para edição.');
+      return;
+    }
+
+    setEditingRecordId(target.id);
+    setSelectedDate(target.date);
+    setForm((prev) => ({
+      ...prev,
+      title: target.title,
+      date: target.date,
+      time: target.time || '09:00',
+      amount: target.amount ? String(target.amount) : '',
+      client: target.client || '',
+      notes: target.notes || '',
+    }));
+  }, [records]);
+
+  const handleDeleteAgendaRecord = useCallback(async (recordId: string) => {
+    const target = records.find((item) => item.id === recordId);
+    if (!target) return;
+
+    if (!window.confirm(`Excluir o compromisso "${target.title}"?`)) return;
+
+    try {
+      const response = await apiRequest<any>(`${endpoint}/${recordId}`, { method: 'DELETE' });
+      if (!response?.success) {
+        throw new Error(response?.error || 'Falha ao excluir compromisso.');
+      }
+
+      await loadRecords();
+      if (editingRecordId === recordId) {
+        resetForm(selectedDate);
+      }
+      toast.success('Compromisso excluído com sucesso.');
+    } catch (error) {
+      console.error('Erro ao excluir compromisso:', error);
+      toast.error('Não foi possível excluir o compromisso.');
+    }
+  }, [editingRecordId, endpoint, loadRecords, records, resetForm, selectedDate]);
+
   const handleSave = async () => {
     if (!form.title.trim() || !form.date) {
       toast.error('Preencha o título e a data para salvar.');
@@ -582,55 +655,38 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       unitPrice: isSimpleSales ? Number(form.unitPrice || '0') || undefined : undefined,
     };
 
+    const payload = {
+      titulo: form.title.trim(),
+      data_referencia: form.date,
+      descricao: form.notes.trim() || null,
+      cliente_nome: form.client.trim() || null,
+      valor: finalAmount,
+      status: 'pendente',
+      metadata,
+    };
+
+    setIsSubmitting(true);
+
     try {
-      const response = await apiRequest<any>(endpoint, {
-        method: 'POST',
-        body: JSON.stringify({
-          titulo: form.title.trim(),
-          data_referencia: form.date,
-          descricao: form.notes.trim() || null,
-          cliente_nome: form.client.trim() || null,
-          valor: finalAmount,
-          status: 'pendente',
-          metadata,
-        }),
+      const isEditing = Boolean(editingRecordId);
+      const response = await apiRequest<any>(isEditing ? `${endpoint}/${editingRecordId}` : endpoint, {
+        method: isEditing ? 'PUT' : 'POST',
+        body: JSON.stringify(payload),
       });
 
-      if (!response?.success || !response?.data) {
+      if (!response?.success) {
         throw new Error(response?.error || 'Falha ao salvar registro.');
       }
 
-      const newRecord = mapApiItemToRecord(response.data as ControlePessoalApiItem);
-      setRecords((prev) => [newRecord, ...prev]);
+      await loadRecords();
       setSelectedDate(form.date);
-      setForm((prev) => ({
-        ...prev,
-        title: '',
-        amount: '',
-        client: '',
-        notes: '',
-        transactionType: 'entrada',
-        category: financialCategories[0],
-        paymentMethod: financialPaymentMethods[0],
-        dueDate: prev.date,
-        isPaid: false,
-        phone: '',
-        email: '',
-        document: '',
-        source: clientSources[0],
-        stage: 'novo',
-        nextContact: prev.date,
-        potentialValue: '',
-        reportType: 'faturamento',
-        reportPeriod: todayBrasilia().slice(0, 7),
-        saleStatus: 'pendente',
-        quantity: '1',
-        unitPrice: '',
-      }));
-      toast.success('Registro salvo com sucesso.');
+      resetForm(form.date);
+      toast.success(isEditing ? 'Compromisso atualizado com sucesso.' : 'Registro salvo com sucesso.');
     } catch (error) {
       console.error('Erro ao salvar controle pessoal:', error);
       toast.error('Não foi possível salvar no banco de dados.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
