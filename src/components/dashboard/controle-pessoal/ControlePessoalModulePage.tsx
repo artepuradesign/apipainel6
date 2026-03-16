@@ -357,32 +357,10 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
   const timelineScrollRef = useRef<HTMLDivElement | null>(null);
   const timelineDragStateRef = useRef({ isDragging: false, startY: 0, startScrollTop: 0 });
 
-  const agendaTimelineBounds = useMemo(() => {
-    if (!isAgenda || agendaTimelineItems.length === 0) {
-      return { startHour: 6, endHour: 18 };
-    }
+  const timelineHourHeight = 52;
+  const timelineTotalMinutes = 24 * 60;
 
-    const earliestHour = Math.floor(Math.min(...agendaTimelineItems.map((item) => item.startMinutes)) / 60);
-    const latestHour = Math.ceil(Math.max(...agendaTimelineItems.map((item) => item.endMinutes)) / 60);
-
-    return {
-      startHour: Math.max(0, Math.min(6, earliestHour)),
-      endHour: Math.min(24, Math.max(18, latestHour)),
-    };
-  }, [agendaTimelineItems, isAgenda]);
-
-  const timelineHourHeight = 56;
-  const timelineStartMinutes = agendaTimelineBounds.startHour * 60;
-  const timelineTotalMinutes = Math.max((agendaTimelineBounds.endHour - agendaTimelineBounds.startHour) * 60, 60);
-
-  const timelineHours = useMemo(
-    () =>
-      Array.from(
-        { length: agendaTimelineBounds.endHour - agendaTimelineBounds.startHour + 1 },
-        (_, index) => agendaTimelineBounds.startHour + index
-      ),
-    [agendaTimelineBounds.endHour, agendaTimelineBounds.startHour]
-  );
+  const timelineHours = useMemo(() => Array.from({ length: 25 }, (_, hour) => hour), []);
 
   const scrollTimelineBy = useCallback((offset: number) => {
     const container = timelineScrollRef.current;
@@ -427,9 +405,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     const container = timelineScrollRef.current;
     if (!container) return;
 
-    const initialHour = Math.max(6, agendaTimelineBounds.startHour);
-    container.scrollTop = (initialHour - agendaTimelineBounds.startHour) * timelineHourHeight;
-  }, [agendaTimelineBounds.startHour, isAgenda, selectedDate, timelineHourHeight]);
+    container.scrollTop = 6 * timelineHourHeight;
+  }, [isAgenda, selectedDate, timelineHourHeight]);
 
   const monthlyFinancial = useMemo(() => {
     if (!isFinancial) return { entradas: 0, saidas: 0, saldo: 0 };
