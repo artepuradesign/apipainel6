@@ -136,6 +136,7 @@ const isClosedLead = (stage?: LeadStage) => stage === 'fechado-ganho' || stage =
 
 const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: ControlePessoalModulePageProps) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const Icon = moduleIconMap[moduleType];
   const isAgenda = moduleType === 'agenda';
   const isFinancial = moduleType === 'financeiro';
@@ -207,8 +208,37 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
   const recordsForSelectedDate = useMemo(() => {
     return records
       .filter((record) => record.date === selectedDate)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }, [records, selectedDate]);
+
+  const agendaTimelineItems = useMemo(() => {
+    if (!isAgenda) return [] as Array<{ id: string; time: string; title: string; detail: string; isPlaceholder: boolean }>;
+
+    if (recordsForSelectedDate.length > 0) {
+      return recordsForSelectedDate.map((record) => {
+        const parsedDate = new Date(record.createdAt);
+        const fallbackTime = '09:00';
+        const time = Number.isNaN(parsedDate.getTime())
+          ? fallbackTime
+          : parsedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        return {
+          id: record.id,
+          time,
+          title: record.title,
+          detail: `${record.client || 'Sem cliente'} • ${record.amount ? formatCurrency(record.amount) : 'Sem valor'}`,
+          isPlaceholder: false,
+        };
+      });
+    }
+
+    return [
+      { id: 'slot-08', time: '08:00', title: 'Planejamento do dia', detail: 'Defina prioridades e blocos de foco.', isPlaceholder: true },
+      { id: 'slot-10', time: '10:00', title: 'Horário livre', detail: 'Espaço aberto para novos compromissos.', isPlaceholder: true },
+      { id: 'slot-14', time: '14:00', title: 'Horário livre', detail: 'Use para retornos ou follow-ups.', isPlaceholder: true },
+      { id: 'slot-17', time: '17:00', title: 'Revisão rápida', detail: 'Feche pendências e organize o próximo dia.', isPlaceholder: true },
+    ];
+  }, [isAgenda, recordsForSelectedDate]);
 
   const monthlyFinancial = useMemo(() => {
     if (!isFinancial) return { entradas: 0, saidas: 0, saldo: 0 };
