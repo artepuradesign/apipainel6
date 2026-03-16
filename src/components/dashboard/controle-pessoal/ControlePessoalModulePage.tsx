@@ -727,11 +727,24 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           title={title}
           subtitle={subtitle}
           icon={<Icon className="h-5 w-5" />}
+          right={(
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleOpenAgendaModal}
+              className="rounded-full h-9 w-9"
+              aria-label="Novo compromisso"
+              title="Novo compromisso"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
           onBack={() => navigate('/dashboard')}
         />
       ) : (
         <PageHeaderCard title={title} subtitle={subtitle} />
-      )}
+      )
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
         <Card className={isAgenda ? 'order-2 lg:order-2' : undefined}>
