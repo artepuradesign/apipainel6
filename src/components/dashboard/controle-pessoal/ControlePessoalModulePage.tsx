@@ -1349,12 +1349,11 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
         </Card>
         ) : null}
 
-        <Card className={isAgenda ? 'order-1 lg:order-1 xl:col-span-2' : undefined}>
-          <CardHeader>
-            <CardTitle>
-              {isAgenda
-                ? 'Calendário e linha do tempo'
-                : isFinancial
+        <Card className={isAgenda ? 'order-1 lg:order-1 xl:col-span-2 border-0 bg-transparent shadow-none' : undefined}>
+          {isAgenda ? null : (
+            <CardHeader>
+              <CardTitle>
+                {isFinancial
                   ? 'Caixa diário e alertas'
                   : isNewClient
                     ? 'Follow-up comercial'
@@ -1363,9 +1362,10 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                       : isSimpleSales
                         ? 'Painel de vendas'
                         : 'Resumo rápido'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+              </CardTitle>
+            </CardHeader>
+          )}
+          <CardContent className={isAgenda ? 'p-0' : undefined}>
             {isAgenda ? (
               <div className="space-y-4">
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,1fr)_minmax(280px,1fr)] xl:items-start">
