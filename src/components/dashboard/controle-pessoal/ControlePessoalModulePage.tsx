@@ -1284,27 +1284,32 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           </CardHeader>
           <CardContent>
             {isAgenda ? (
-              <div className="grid gap-4 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)] xl:items-start">
-                <div className="w-full rounded-md border border-border bg-card p-2 sm:p-3">
+              <div className="grid gap-5 xl:grid-cols-[minmax(350px,420px)_minmax(0,1fr)] xl:items-start">
+                <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
+                    <p className="text-sm font-semibold text-foreground">Calendário de compromissos</p>
+                    <Badge variant="secondary">{datesWithAppointments.length} dias ativos</Badge>
+                  </div>
+
                   <Calendar
                     locale={ptBR}
                     mode="single"
                     selected={fromISODate(selectedDate)}
                     onSelect={handleDaySelect}
                     defaultMonth={fromISODate(selectedDate)}
-                    className="w-full rounded-xl border border-border/60 bg-card p-1 pointer-events-auto shadow-sm"
+                    className="w-full rounded-xl border border-border/60 bg-background p-2 pointer-events-auto"
                     classNames={{
                       months: 'w-full',
                       month: 'w-full space-y-3',
                       caption: 'flex justify-center pt-1 relative items-center',
                       caption_label: 'text-sm font-semibold text-foreground',
-                      nav_button: 'h-8 w-8 rounded-md border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground',
+                      nav_button: 'h-8 w-8 rounded-md border border-border bg-card text-foreground hover:bg-accent hover:text-accent-foreground',
                       table: 'w-full border-collapse',
-                      head_row: 'grid grid-cols-7',
-                      row: 'mt-1 grid grid-cols-7',
-                      head_cell: 'text-muted-foreground rounded-md text-center text-[0.78rem] font-medium uppercase tracking-wide',
-                      cell: 'h-9 text-center text-sm p-0 relative first:[&:has([aria-selected])]:rounded-l-lg last:[&:has([aria-selected])]:rounded-r-lg focus-within:relative focus-within:z-20 sm:h-10',
-                      day: 'h-9 w-full rounded-md p-0 text-xs font-medium text-foreground transition-colors hover:bg-accent/70 sm:h-10 sm:text-sm',
+                      head_row: 'grid grid-cols-7 gap-0.5',
+                      row: 'mt-1 grid grid-cols-7 gap-0.5',
+                      head_cell: 'text-muted-foreground rounded-md text-center text-[0.72rem] font-medium uppercase tracking-wider',
+                      cell: 'h-10 text-center text-sm p-0 relative first:[&:has([aria-selected])]:rounded-l-lg last:[&:has([aria-selected])]:rounded-r-lg focus-within:relative focus-within:z-20',
+                      day: 'h-10 w-full rounded-lg p-0 text-sm font-medium text-foreground transition-colors hover:bg-accent/70',
                       day_selected: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary focus:bg-primary',
                       day_today: 'border border-primary/30 bg-accent text-foreground',
                       day_outside: 'text-muted-foreground/60 opacity-80',
@@ -1313,78 +1318,79 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                     modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
                     components={{ DayContent: AgendaDayContent }}
                   />
+
+                  <div className="mt-3 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">Data selecionada:</span> {formatDateBR(selectedDate)}
+                  </div>
                 </div>
 
-                <div className="rounded-md border border-border bg-card p-4">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <Clock3 className="h-4 w-4 text-primary" />
-                      Linha do tempo • {formatDateBR(selectedDate)}
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Linha do tempo diária</p>
+                      <p className="text-xs text-muted-foreground">Visão completa de 24h para {formatDateBR(selectedDate)}</p>
                     </div>
-                    <Badge variant={recordsForSelectedDate.length ? 'default' : 'secondary'}>
-                      {recordsForSelectedDate.length || agendaTimelineItems.length}
+                    <Badge variant={agendaTimelineItems.length ? 'default' : 'secondary'}>
+                      {agendaTimelineItems.length} compromisso(s)
                     </Badge>
                   </div>
 
                   {agendaTimelineItems.length === 0 ? (
-                    <div className="rounded-md border border-dashed border-border bg-background p-4 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed border-border bg-background p-6 text-sm text-muted-foreground">
                       Nenhum compromisso cadastrado para {formatDateBR(selectedDate)}.
                     </div>
                   ) : (
-                    <div className="rounded-md border border-border bg-background p-3">
-                      <div className="relative h-[720px] overflow-y-auto pr-2">
-                        {Array.from({ length: 25 }).map((_, hour) => {
-                          const top = (hour / 24) * 100;
-                          return (
-                            <div key={hour} className="absolute inset-x-0" style={{ top: `${top}%` }}>
-                              <div className="ml-14 border-t border-border/70" />
-                              {hour < 24 ? (
-                                <span className="absolute left-0 -translate-y-1/2 text-[10px] font-medium text-muted-foreground">
-                                  {`${String(hour).padStart(2, '0')}:00`}
-                                </span>
-                              ) : null}
-                            </div>
-                          );
-                        })}
+                    <div className="rounded-lg border border-border bg-background p-3">
+                      <div className="relative h-[680px] overflow-y-auto">
+                        {Array.from({ length: 24 }).map((_, hour) => (
+                          <div key={hour} className="absolute inset-x-0" style={{ top: `${(hour / 24) * 100}%` }}>
+                            <span className="absolute left-0 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground">
+                              {`${String(hour).padStart(2, '0')}:00`}
+                            </span>
+                            <div className="ml-14 border-t border-border/60" />
+                          </div>
+                        ))}
 
-                        <div className="absolute inset-y-0 left-16 right-2">
+                        <div className="absolute inset-y-0 left-16 right-1">
                           {agendaTimelineItems.map((item) => {
                             const top = (item.startMinutes / 1440) * 100;
-                            const height = Math.max(((item.endMinutes - item.startMinutes) / 1440) * 100, 4);
+                            const height = Math.max(((item.endMinutes - item.startMinutes) / 1440) * 100, 4.5);
 
                             return (
                               <div
                                 key={item.id}
-                                className="absolute left-0 right-0 rounded-md border border-border bg-card p-2 shadow-sm"
+                                className="absolute left-0 right-0 overflow-hidden rounded-lg border border-border bg-card shadow-sm"
                                 style={{ top: `${top}%`, height: `${height}%` }}
                               >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div>
-                                    <p className="text-[11px] font-semibold text-muted-foreground">{item.startTime} - {item.endTime}</p>
-                                    <p className="text-sm font-medium leading-tight">{item.title}</p>
+                                <div className="h-full border-l-4 border-primary px-3 py-2">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <p className="text-[11px] font-semibold text-primary">{item.startTime} - {item.endTime}</p>
+                                      <p className="truncate text-sm font-semibold text-foreground">{item.title}</p>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => handleEditAgendaRecord(item.id)}
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => handleDeleteAgendaRecord(item.id)}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={() => handleEditAgendaRecord(item.id)}
-                                    >
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={() => handleDeleteAgendaRecord(item.id)}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </div>
+                                  <p className="mt-1 truncate text-xs text-muted-foreground">{item.detail}</p>
                                 </div>
-                                <p className="mt-1 truncate text-xs text-muted-foreground">{item.detail}</p>
                               </div>
                             );
                           })}
