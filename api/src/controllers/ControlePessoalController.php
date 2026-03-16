@@ -115,6 +115,19 @@ class ControlePessoalController {
                 'metadata' => $input['metadata'] ?? null,
             ];
 
+            if ($modulo === 'agenda') {
+                $meta = is_array($payload['metadata']) ? $payload['metadata'] : [];
+                $startTime = isset($meta['time']) ? (string)$meta['time'] : '';
+                $endTime = isset($meta['endTime']) ? (string)$meta['endTime'] : '';
+
+                if ($startTime !== '' && $endTime !== '') {
+                    $conflicts = $this->model->findAgendaConflicts($targetUserId, $dataReferencia, $startTime, $endTime);
+                    if (!empty($conflicts)) {
+                        Response::error('Já existe compromisso neste intervalo de horário.', 422);
+                    }
+                }
+            }
+
             $id = $this->model->createRecord($payload);
             $created = $this->model->findById($id, $currentUserId, true);
 
