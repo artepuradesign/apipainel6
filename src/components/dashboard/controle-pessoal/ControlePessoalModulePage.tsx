@@ -518,9 +518,14 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     [appointmentCountByDate]
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.title.trim() || !form.date) {
       toast.error('Preencha o título e a data para salvar.');
+      return;
+    }
+
+    if (isAgenda && !form.time) {
+      toast.error('Informe a hora do compromisso.');
       return;
     }
 
@@ -549,21 +554,16 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     }
 
     const computedSaleAmount = (Number(form.quantity || '0') || 0) * (Number(form.unitPrice || '0') || 0);
+    const finalAmount = isSimpleSales
+      ? Number(form.amount || '0') > 0
+        ? Number(form.amount)
+        : computedSaleAmount
+      : form.amount
+        ? Number(form.amount)
+        : 0;
 
-    const newRecord: ControlePessoalRecord = {
-      id: crypto.randomUUID(),
-      title: form.title.trim(),
-      date: form.date,
-      amount: isSimpleSales
-        ? Number(form.amount || '0') > 0
-          ? Number(form.amount)
-          : computedSaleAmount
-        : form.amount
-          ? Number(form.amount)
-          : undefined,
-      client: form.client.trim() || undefined,
-      notes: form.notes.trim() || undefined,
-      createdAt: new Date().toISOString(),
+    const metadata = {
+      time: form.time,
       transactionType: isFinancial ? form.transactionType : undefined,
       category: isFinancial ? form.category : undefined,
       paymentMethod: isFinancial || isSimpleSales ? form.paymentMethod : undefined,
@@ -583,33 +583,56 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       unitPrice: isSimpleSales ? Number(form.unitPrice || '0') || undefined : undefined,
     };
 
-    setRecords((prev) => [newRecord, ...prev]);
-    setSelectedDate(form.date);
-    setForm((prev) => ({
-      ...prev,
-      title: '',
-      amount: '',
-      client: '',
-      notes: '',
-      transactionType: 'entrada',
-      category: financialCategories[0],
-      paymentMethod: financialPaymentMethods[0],
-      dueDate: prev.date,
-      isPaid: false,
-      phone: '',
-      email: '',
-      document: '',
-      source: clientSources[0],
-      stage: 'novo',
-      nextContact: prev.date,
-      potentialValue: '',
-      reportType: 'faturamento',
-      reportPeriod: todayBrasilia().slice(0, 7),
-      saleStatus: 'pendente',
-      quantity: '1',
-      unitPrice: '',
-    }));
-    toast.success('Registro salvo com sucesso.');
+    try {
+      const response = await apiRequest<any>(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({
+          titulo: form.title.trim(),
+          data_referencia: form.date,
+          descricao: form.notes.trim() || null,
+          cliente_nome: form.client.trim() || null,
+          valor: finalAmount,
+          status: 'pendente',
+          metadata,
+        }),
+      });
+
+      if (!response?.success || !response?.data) {
+        throw new Error(response?.error || 'Falha ao salvar registro.');
+      }
+
+      const newRecord = mapApiItemToRecord(response.data as ControlePessoalApiItem);
+      setRecords((prev) => [newRecord, ...prev]);
+      setSelectedDate(form.date);
+      setForm((prev) => ({
+        ...prev,
+        title: '',
+        amount: '',
+        client: '',
+        notes: '',
+        transactionType: 'entrada',
+        category: financialCategories[0],
+        paymentMethod: financialPaymentMethods[0],
+        dueDate: prev.date,
+        isPaid: false,
+        phone: '',
+        email: '',
+        document: '',
+        source: clientSources[0],
+        stage: 'novo',
+        nextContact: prev.date,
+        potentialValue: '',
+        reportType: 'faturamento',
+        reportPeriod: todayBrasilia().slice(0, 7),
+        saleStatus: 'pendente',
+        quantity: '1',
+        unitPrice: '',
+      }));
+      toast.success('Registro salvo com sucesso.');
+    } catch (error) {
+      console.error('Erro ao salvar controle pessoal:', error);
+      toast.error('Não foi possível salvar no banco de dados.');
+    }
   };
 
   return (
