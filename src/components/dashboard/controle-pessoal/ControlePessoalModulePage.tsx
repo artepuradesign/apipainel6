@@ -567,6 +567,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       title: target.title,
       date: target.date,
       time: target.time || '09:00',
+      endTime: target.endTime || '10:00',
       amount: target.amount ? String(target.amount) : '',
       client: target.client || '',
       notes: target.notes || '',
