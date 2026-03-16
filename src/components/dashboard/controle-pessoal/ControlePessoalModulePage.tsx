@@ -1473,6 +1473,89 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           )}
         </CardContent>
       </Card>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              {isFinancial
+                ? 'Entradas do mês'
+                : isNewClient
+                  ? 'Novos clientes no mês'
+                  : isReports
+                    ? 'Indicadores do mês'
+                    : isSimpleSales
+                      ? 'Vendas concluídas no mês'
+                      : 'Registros hoje'}
+            </p>
+            <p className="text-2xl font-bold">
+              {isFinancial
+                ? formatCurrency(monthlyFinancial.entradas)
+                : isNewClient
+                  ? newClientInsights.monthlyNewClients
+                  : isReports
+                    ? reportsInsights.monthlyCount
+                    : isSimpleSales
+                      ? simpleSalesInsights.monthlySalesCount
+                      : stats.todayCount}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              {isFinancial
+                ? 'Saídas do mês'
+                : isNewClient
+                  ? 'Follow-ups para hoje'
+                  : isReports
+                    ? 'Média por indicador'
+                    : isSimpleSales
+                      ? 'Faturamento mensal'
+                      : 'Total de registros'}
+            </p>
+            <p className="text-2xl font-bold">
+              {isFinancial
+                ? formatCurrency(monthlyFinancial.saidas)
+                : isNewClient
+                  ? newClientInsights.followupsToday
+                  : isReports
+                    ? formatCurrency(reportsInsights.averageValue)
+                    : isSimpleSales
+                      ? formatCurrency(simpleSalesInsights.monthlyRevenue)
+                      : stats.total}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              {isFinancial
+                ? 'Saldo do mês'
+                : isNewClient
+                  ? 'Pipeline ativo estimado'
+                  : isReports
+                    ? 'Resultado estimado'
+                    : isSimpleSales
+                      ? 'Ticket médio'
+                      : 'Movimentação do mês'}
+            </p>
+            <p className="text-2xl font-bold">
+              {isFinancial
+                ? formatCurrency(monthlyFinancial.saldo)
+                : isNewClient
+                  ? formatCurrency(newClientInsights.activePipelineValue)
+                  : isReports
+                    ? formatCurrency(reportsInsights.monthlyResult)
+                    : isSimpleSales
+                      ? formatCurrency(simpleSalesInsights.averageTicket)
+                      : formatCurrency(stats.monthlyTotal)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
