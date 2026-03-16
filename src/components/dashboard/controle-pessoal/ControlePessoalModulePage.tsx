@@ -132,12 +132,6 @@ const toIsoDateTime = (value?: string) => {
   return value.includes('T') ? value : value.replace(' ', 'T');
 };
 
-const toTimeMinutes = (time?: string) => {
-  if (!time || !time.includes(':')) return Number.POSITIVE_INFINITY;
-  const [hour, minute] = time.split(':').map(Number);
-  return hour * 60 + minute;
-};
-
 const formatCurrency = (value: number) =>
   value.toLocaleString('pt-BR', {
     style: 'currency',
