@@ -176,14 +176,14 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
   const isReports = moduleType === 'relatorios';
   const isSimpleSales = moduleType === 'vendasimples';
   const todayIso = useMemo(() => todayBrasilia(), []);
-
-  const storageKey = `controle_pessoal_${moduleType}_${user?.id ?? 'guest'}`;
+  const endpoint = moduleEndpointMap[moduleType];
 
   const [records, setRecords] = useState<ControlePessoalRecord[]>([]);
   const [selectedDate, setSelectedDate] = useState(todayIso);
   const [form, setForm] = useState({
     title: '',
     date: todayIso,
+    time: '09:00',
     amount: '',
     client: '',
     notes: '',
@@ -206,21 +206,68 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     unitPrice: '',
   });
 
-  useEffect(() => {
-    const saved = localStorage.getItem(storageKey);
-    if (!saved) return;
+  const mapApiItemToRecord = useCallback((item: ControlePessoalApiItem): ControlePessoalRecord => {
+    const metadata = (item.metadata || {}) as Record<string, unknown>;
+    const isPaidValue = metadata.isPaid;
 
-    try {
-      const parsed = JSON.parse(saved) as ControlePessoalRecord[];
-      setRecords(Array.isArray(parsed) ? parsed : []);
-    } catch {
-      setRecords([]);
-    }
-  }, [storageKey]);
+    return {
+      id: String(item.id),
+      title: item.titulo,
+      date: item.data_referencia,
+      time: typeof metadata.time === 'string' ? metadata.time : undefined,
+      amount: item.valor !== null && item.valor !== undefined ? Number(item.valor) : undefined,
+      client: item.cliente_nome || undefined,
+      notes: item.descricao || undefined,
+      createdAt: toIsoDateTime(item.created_at),
+      transactionType: typeof metadata.transactionType === 'string' ? (metadata.transactionType as TransactionType) : undefined,
+      category: typeof metadata.category === 'string' ? metadata.category : undefined,
+      paymentMethod: typeof metadata.paymentMethod === 'string' ? metadata.paymentMethod : undefined,
+      dueDate: typeof metadata.dueDate === 'string' ? metadata.dueDate : undefined,
+      isPaid: typeof isPaidValue === 'boolean' ? isPaidValue : isPaidValue === 'true' || isPaidValue === 1,
+      phone: typeof metadata.phone === 'string' ? metadata.phone : undefined,
+      email: typeof metadata.email === 'string' ? metadata.email : undefined,
+      document: typeof metadata.document === 'string' ? metadata.document : undefined,
+      source: typeof metadata.source === 'string' ? metadata.source : undefined,
+      stage: typeof metadata.stage === 'string' ? (metadata.stage as LeadStage) : undefined,
+      nextContact: typeof metadata.nextContact === 'string' ? metadata.nextContact : undefined,
+      potentialValue: typeof metadata.potentialValue === 'number' ? metadata.potentialValue : undefined,
+      reportType: typeof metadata.reportType === 'string' ? (metadata.reportType as ReportType) : undefined,
+      reportPeriod: typeof metadata.reportPeriod === 'string' ? metadata.reportPeriod : undefined,
+      saleStatus: typeof metadata.saleStatus === 'string' ? (metadata.saleStatus as SaleStatus) : undefined,
+      quantity: typeof metadata.quantity === 'number' ? metadata.quantity : undefined,
+      unitPrice: typeof metadata.unitPrice === 'number' ? metadata.unitPrice : undefined,
+    };
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(records));
-  }, [records, storageKey]);
+    let active = true;
+
+    const loadRecords = async () => {
+      if (!user?.id) {
+        setRecords([]);
+        return;
+      }
+
+      try {
+        const response = await apiRequest<any>(`${endpoint}?limit=100&offset=0`, { method: 'GET' });
+        const items = Array.isArray(response?.data?.items) ? (response.data.items as ControlePessoalApiItem[]) : [];
+
+        if (!active) return;
+        setRecords(items.map(mapApiItemToRecord));
+      } catch (error) {
+        if (!active) return;
+        setRecords([]);
+        toast.error('Não foi possível carregar os registros da agenda.');
+        console.error('Erro ao carregar controle pessoal:', error);
+      }
+    };
+
+    loadRecords();
+
+    return () => {
+      active = false;
+    };
+  }, [endpoint, mapApiItemToRecord, user?.id]);
 
   useEffect(() => {
     setForm((prev) => ({ ...prev, date: prev.date || selectedDate }));
@@ -240,7 +287,11 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
   const recordsForSelectedDate = useMemo(() => {
     return records
       .filter((record) => record.date === selectedDate)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      .sort((a, b) => {
+        const timeDiff = toTimeMinutes(a.time) - toTimeMinutes(b.time);
+        if (timeDiff !== 0) return timeDiff;
+        return toIsoDateTime(a.createdAt).localeCompare(toIsoDateTime(b.createdAt));
+      });
   }, [records, selectedDate]);
 
   const agendaTimelineItems = useMemo(() => {
@@ -248,11 +299,12 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
     if (recordsForSelectedDate.length > 0) {
       return recordsForSelectedDate.map((record) => {
-        const parsedDate = new Date(record.createdAt);
+        const parsedDate = new Date(toIsoDateTime(record.createdAt));
         const fallbackTime = '09:00';
-        const time = Number.isNaN(parsedDate.getTime())
+        const createdAtTime = Number.isNaN(parsedDate.getTime())
           ? fallbackTime
           : parsedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const time = record.time || createdAtTime;
 
         return {
           id: record.id,
