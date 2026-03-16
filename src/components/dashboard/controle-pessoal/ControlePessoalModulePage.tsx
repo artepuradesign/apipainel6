@@ -1564,8 +1564,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2 sm:col-span-1">
+              <div className="space-y-4">
+                <div className="space-y-2">
                   <Label htmlFor="agenda-data">Data</Label>
                   <Input
                     id="agenda-data"
@@ -1578,23 +1578,29 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                     }}
                   />
                 </div>
-                <div className="space-y-2 sm:col-span-1">
-                  <Label htmlFor="agenda-inicio">Início</Label>
-                  <Input
-                    id="agenda-inicio"
-                    type="time"
-                    value={form.time}
-                    onChange={(e) => setForm((prev) => ({ ...prev, time: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2 sm:col-span-1">
-                  <Label htmlFor="agenda-termino">Término</Label>
-                  <Input
-                    id="agenda-termino"
-                    type="time"
-                    value={form.endTime}
-                    onChange={(e) => setForm((prev) => ({ ...prev, endTime: e.target.value }))}
-                  />
+
+                <AgendaTimeRangePicker
+                  startTime={form.time}
+                  endTime={form.endTime}
+                  occupiedRanges={agendaOccupiedRangesForFormDate}
+                  onChange={(nextStartTime, nextEndTime) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      time: nextStartTime,
+                      endTime: nextEndTime,
+                    }));
+                  }}
+                />
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="agenda-inicio">Hora de início</Label>
+                    <Input id="agenda-inicio" value={form.time} readOnly />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="agenda-termino">Hora de término</Label>
+                    <Input id="agenda-termino" value={form.endTime} readOnly />
+                  </div>
                 </div>
               </div>
 
