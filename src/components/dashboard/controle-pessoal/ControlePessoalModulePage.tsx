@@ -1279,8 +1279,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                   ) : (
                     <div className="space-y-4">
                       {agendaTimelineItems.map((item, index) => (
-                        <div key={item.id} className="grid grid-cols-[58px_minmax(0,1fr)] gap-3">
-                          <p className="text-xs font-semibold text-muted-foreground">{item.time}</p>
+                        <div key={item.id} className="grid grid-cols-[92px_minmax(0,1fr)] gap-3">
+                          <p className="text-xs font-semibold text-muted-foreground">{item.timeLabel}</p>
                           <div className="relative rounded-md border border-border bg-background p-3">
                             <span className="absolute -left-[11px] top-4 h-2.5 w-2.5 rounded-full bg-primary" />
                             {index < agendaTimelineItems.length - 1 ? (
