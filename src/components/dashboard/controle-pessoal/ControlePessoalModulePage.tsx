@@ -588,8 +588,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
   const agendaCalendarPanels = useMemo(
     () => [
-      { id: 'current', month: agendaBaseMonth, title: 'Mês atual' },
-      { id: 'next', month: addMonths(agendaBaseMonth, 1), title: 'Próximo mês' },
+      { id: 'current', month: agendaBaseMonth, title: 'Mês atual', visibilityClass: '' },
+      { id: 'next', month: addMonths(agendaBaseMonth, 1), title: 'Próximo mês', visibilityClass: 'hidden xl:block' },
     ],
     [agendaBaseMonth]
   );
@@ -1368,8 +1368,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           <CardContent className={isAgenda ? 'p-0' : undefined}>
             {isAgenda ? (
               <div className="space-y-4">
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,1fr)_minmax(280px,1fr)] xl:items-start">
-                  <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,1fr)_minmax(280px,1fr)] xl:items-start">
+                  <div className="order-2 rounded-xl border border-border bg-card p-3 shadow-sm md:order-1">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="text-sm font-semibold text-foreground">Linha do tempo diária</p>
@@ -1481,7 +1481,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                   </div>
 
                   {agendaCalendarPanels.map((panel) => (
-                    <div key={panel.id} className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                    <div key={panel.id} className={`${panel.visibilityClass} order-1 rounded-xl border border-border bg-card p-3 shadow-sm md:order-2`}>
                       <div className="mb-3 flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
                         <p className="text-sm font-semibold text-foreground">{panel.title}</p>
                         <Badge variant="secondary">{datesWithAppointments.length} dias ativos</Badge>
