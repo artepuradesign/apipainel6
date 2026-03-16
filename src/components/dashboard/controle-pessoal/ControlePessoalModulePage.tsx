@@ -536,9 +536,9 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
       return (
         <div className="relative flex h-9 w-9 items-center justify-center">
-          <span>{date.getDate()}</span>
+          <span className="font-medium">{date.getDate()}</span>
           {appointmentsInDate > 0 && !isOutsideMonth ? (
-            <span className="absolute -bottom-1 right-0 inline-flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+            <span className="absolute -bottom-1 right-0 inline-flex min-w-4 items-center justify-center rounded-full border border-success-border bg-success px-1 text-[10px] font-semibold text-success-foreground shadow-sm">
               {appointmentsInDate}
             </span>
           ) : null}
