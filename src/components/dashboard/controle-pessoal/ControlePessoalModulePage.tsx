@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DayContentProps } from 'react-day-picker';
-import { LucideIcon, PlusCircle, CalendarDays, Wallet, Users, FileText, ShoppingCart } from 'lucide-react';
+import { LucideIcon, PlusCircle, CalendarDays, Wallet, Users, FileText, ShoppingCart, Clock3 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import PageHeaderCard from '@/components/dashboard/PageHeaderCard';
+import SimpleTitleBar from '@/components/dashboard/SimpleTitleBar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -134,6 +136,7 @@ const isClosedLead = (stage?: LeadStage) => stage === 'fechado-ganho' || stage =
 
 const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: ControlePessoalModulePageProps) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const Icon = moduleIconMap[moduleType];
   const isAgenda = moduleType === 'agenda';
   const isFinancial = moduleType === 'financeiro';
@@ -205,8 +208,37 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
   const recordsForSelectedDate = useMemo(() => {
     return records
       .filter((record) => record.date === selectedDate)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }, [records, selectedDate]);
+
+  const agendaTimelineItems = useMemo(() => {
+    if (!isAgenda) return [] as Array<{ id: string; time: string; title: string; detail: string; isPlaceholder: boolean }>;
+
+    if (recordsForSelectedDate.length > 0) {
+      return recordsForSelectedDate.map((record) => {
+        const parsedDate = new Date(record.createdAt);
+        const fallbackTime = '09:00';
+        const time = Number.isNaN(parsedDate.getTime())
+          ? fallbackTime
+          : parsedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        return {
+          id: record.id,
+          time,
+          title: record.title,
+          detail: `${record.client || 'Sem cliente'} • ${record.amount ? formatCurrency(record.amount) : 'Sem valor'}`,
+          isPlaceholder: false,
+        };
+      });
+    }
+
+    return [
+      { id: 'slot-08', time: '08:00', title: 'Planejamento do dia', detail: 'Defina prioridades e blocos de foco.', isPlaceholder: true },
+      { id: 'slot-10', time: '10:00', title: 'Horário livre', detail: 'Espaço aberto para novos compromissos.', isPlaceholder: true },
+      { id: 'slot-14', time: '14:00', title: 'Horário livre', detail: 'Use para retornos ou follow-ups.', isPlaceholder: true },
+      { id: 'slot-17', time: '17:00', title: 'Revisão rápida', detail: 'Feche pendências e organize o próximo dia.', isPlaceholder: true },
+    ];
+  }, [isAgenda, recordsForSelectedDate]);
 
   const monthlyFinancial = useMemo(() => {
     if (!isFinancial) return { entradas: 0, saidas: 0, saldo: 0 };
@@ -498,7 +530,16 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
   return (
     <div className="space-y-6">
-      <PageHeaderCard title={title} subtitle={subtitle} />
+      {isAgenda ? (
+        <SimpleTitleBar
+          title={title}
+          subtitle={subtitle}
+          icon={<Icon className="h-5 w-5" />}
+          onBack={() => navigate('/dashboard')}
+        />
+      ) : (
+        <PageHeaderCard title={title} subtitle={subtitle} />
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -582,11 +623,11 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <Card>
+        <Card className={isAgenda ? 'order-2 lg:order-2' : undefined}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Icon className="h-5 w-5 text-primary" />
-              {formTitle}
+              {isAgenda ? 'Novo compromisso' : formTitle}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1038,37 +1079,14 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
               <PlusCircle className="mr-2 h-4 w-4" />
               Salvar registro
             </Button>
-
-            {isAgenda ? (
-              <div className="rounded-md border border-border bg-background p-3">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium">Compromissos em {formatDateBR(selectedDate)}</p>
-                  <Badge variant={recordsForSelectedDate.length ? 'default' : 'outline'}>
-                    {recordsForSelectedDate.length}
-                  </Badge>
-                </div>
-                {recordsForSelectedDate.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Nenhum compromisso para este dia.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {recordsForSelectedDate.map((record) => (
-                      <div key={record.id} className="rounded-md border border-border p-2">
-                        <p className="text-sm font-medium">{record.title}</p>
-                        <p className="text-xs text-muted-foreground">{record.client || 'Sem cliente'} • {record.amount ? formatCurrency(record.amount) : 'Sem valor'}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : null}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={isAgenda ? 'order-1 lg:order-1' : undefined}>
           <CardHeader>
             <CardTitle>
               {isAgenda
-                ? 'Calendário do mês'
+                ? 'Calendário e linha do tempo'
                 : isFinancial
                   ? 'Caixa diário e alertas'
                   : isNewClient
@@ -1093,16 +1111,34 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                   modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
                   components={{ DayContent: AgendaDayContent }}
                 />
-                <div className="rounded-md border border-border bg-background p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm text-muted-foreground">Dia selecionado</p>
-                    <Badge variant="secondary">{formatDateBR(selectedDate)}</Badge>
+
+                <div className="rounded-md border border-border bg-card p-4">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Clock3 className="h-4 w-4 text-primary" />
+                      Linha do tempo • {formatDateBR(selectedDate)}
+                    </div>
+                    <Badge variant={recordsForSelectedDate.length ? 'default' : 'secondary'}>
+                      {recordsForSelectedDate.length || agendaTimelineItems.length}
+                    </Badge>
                   </div>
-                  <p className="mt-2 text-sm">
-                    {recordsForSelectedDate.length === 0
-                      ? 'Dia livre para novos compromissos.'
-                      : `${recordsForSelectedDate.length} compromisso(s) programado(s).`}
-                  </p>
+
+                  <div className="space-y-4">
+                    {agendaTimelineItems.map((item, index) => (
+                      <div key={item.id} className="grid grid-cols-[58px_minmax(0,1fr)] gap-3">
+                        <p className="text-xs font-semibold text-muted-foreground">{item.time}</p>
+                        <div className="relative rounded-md border border-border bg-background p-3">
+                          <span className="absolute -left-[11px] top-4 h-2.5 w-2.5 rounded-full bg-primary" />
+                          {index < agendaTimelineItems.length - 1 ? (
+                            <span className="absolute -left-[7px] top-6 bottom-[-22px] w-px bg-border" />
+                          ) : null}
+                          <p className="text-sm font-medium">{item.title}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
+                          {item.isPlaceholder ? <Badge variant="outline" className="mt-2">Livre</Badge> : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : isFinancial ? (
