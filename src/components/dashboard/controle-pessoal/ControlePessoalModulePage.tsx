@@ -1400,113 +1400,140 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-border bg-card p-3 shadow-sm w-full xl:max-w-[760px]">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">Linha do tempo diária</p>
-                      <p className="text-xs text-muted-foreground">Base padrão 06:00–18:00. Arraste ou use os botões para ver toda a grade.</p>
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] xl:items-start">
+                  <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Linha do tempo diária</p>
+                        <p className="text-xs text-muted-foreground">Base padrão 06:00–18:00. Arraste ou use os botões para ver toda a grade.</p>
+                      </div>
+                      <Badge variant={agendaTimelineItems.length ? 'default' : 'secondary'}>
+                        {agendaTimelineItems.length} compromisso(s)
+                      </Badge>
                     </div>
-                    <Badge variant={agendaTimelineItems.length ? 'default' : 'secondary'}>
-                      {agendaTimelineItems.length} compromisso(s)
-                    </Badge>
+
+                    <div className="rounded-lg border border-border bg-background p-2">
+                      <div className="relative">
+                        <div
+                          ref={timelineScrollRef}
+                          className="relative h-[500px] overflow-y-auto rounded-md border border-border/70 bg-background pr-1 cursor-grab active:cursor-grabbing select-none"
+                          onMouseDown={handleTimelineDragStart}
+                          onMouseMove={handleTimelineDragMove}
+                          onMouseUp={stopTimelineDrag}
+                          onMouseLeave={stopTimelineDrag}
+                        >
+                          <div className="relative min-h-full" style={{ height: `${(timelineTotalMinutes / 60) * timelineHourHeight}px` }}>
+                            {timelineHours.map((hour) => (
+                              <div
+                                key={hour}
+                                className="absolute inset-x-0"
+                                style={{ top: `${hour * timelineHourHeight}px` }}
+                              >
+                                <span className="absolute left-2 sm:left-3 -translate-y-1/2 text-[12px] font-semibold text-muted-foreground">
+                                  {`${String(hour).padStart(2, '0')}:00`}
+                                </span>
+                                <div className="ml-14 sm:ml-16 border-t border-border/60" />
+                              </div>
+                            ))}
+
+                            <div className="absolute inset-y-0 left-[3.8rem] sm:left-[4.5rem] right-1 sm:right-2">
+                              {agendaTimelineItems.map((item) => {
+                                const top = (item.startMinutes / 60) * timelineHourHeight;
+                                const height = Math.max(((item.endMinutes - item.startMinutes) / 60) * timelineHourHeight, 52);
+
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className="absolute left-0 right-0 overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+                                    style={{ top: `${top}px`, height: `${height}px` }}
+                                  >
+                                    <div className="h-full border-l-4 border-primary px-2.5 py-2">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                          <p className="text-xs font-semibold text-primary">{item.startTime} - {item.endTime}</p>
+                                          <p className="truncate text-sm font-semibold text-foreground">{item.title}</p>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={() => handleEditAgendaRecord(item.id)}
+                                          >
+                                            <Pencil className="h-3.5 w-3.5" />
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={() => handleDeleteAgendaRecord(item.id)}
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                      <p className="mt-1 truncate text-xs text-muted-foreground">{item.detail}</p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {agendaTimelineItems.length === 0 ? (
+                              <div className="pointer-events-none absolute inset-x-[3.8rem] sm:inset-x-[4.5rem] top-6 rounded-md border border-dashed border-border bg-card/80 p-2.5 text-xs text-muted-foreground backdrop-blur-sm">
+                                Nenhum compromisso cadastrado para {formatDateBR(selectedDate)}.
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="icon"
+                          className="absolute left-1/2 top-2 z-10 h-7 w-7 -translate-x-1/2 rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary"
+                          onClick={() => scrollTimelineBy(-timelineHourHeight * 3)}
+                        >
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="icon"
+                          className="absolute bottom-2 left-1/2 z-10 h-7 w-7 -translate-x-1/2 rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary"
+                          onClick={() => scrollTimelineBy(timelineHourHeight * 3)}
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="rounded-lg border border-border bg-background p-2">
-                    <div className="relative">
-                      <div
-                        ref={timelineScrollRef}
-                        className="relative h-[500px] overflow-y-auto rounded-md border border-border/70 bg-background pr-1 cursor-grab active:cursor-grabbing select-none"
-                        onMouseDown={handleTimelineDragStart}
-                        onMouseMove={handleTimelineDragMove}
-                        onMouseUp={stopTimelineDrag}
-                        onMouseLeave={stopTimelineDrag}
-                      >
-                        <div className="relative min-h-full" style={{ height: `${(timelineTotalMinutes / 60) * timelineHourHeight}px` }}>
-                          {timelineHours.map((hour) => (
-                            <div
-                              key={hour}
-                              className="absolute inset-x-0"
-                              style={{ top: `${hour * timelineHourHeight}px` }}
-                            >
-                              <span className="absolute left-2 sm:left-3 -translate-y-1/2 text-[12px] font-semibold text-muted-foreground">
-                                {`${String(hour).padStart(2, '0')}:00`}
-                              </span>
-                              <div className="ml-14 sm:ml-16 border-t border-border/60" />
-                            </div>
-                          ))}
+                  <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-foreground">Histórico do dia</p>
+                      <Badge variant="secondary">{recordsForSelectedDate.length}</Badge>
+                    </div>
 
-                          <div className="absolute inset-y-0 left-[3.8rem] sm:left-[4.5rem] right-1 sm:right-2">
-                            {agendaTimelineItems.map((item) => {
-                              const top = (item.startMinutes / 60) * timelineHourHeight;
-                              const height = Math.max(((item.endMinutes - item.startMinutes) / 60) * timelineHourHeight, 52);
-
-                              return (
-                                <div
-                                  key={item.id}
-                                  className="absolute left-0 right-0 overflow-hidden rounded-lg border border-border bg-card shadow-sm"
-                                  style={{ top: `${top}px`, height: `${height}px` }}
-                                >
-                                  <div className="h-full border-l-4 border-primary px-2.5 py-2">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="min-w-0">
-                                        <p className="text-xs font-semibold text-primary">{item.startTime} - {item.endTime}</p>
-                                        <p className="truncate text-sm font-semibold text-foreground">{item.title}</p>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          onClick={() => handleEditAgendaRecord(item.id)}
-                                        >
-                                          <Pencil className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          onClick={() => handleDeleteAgendaRecord(item.id)}
-                                        >
-                                          <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                    <p className="mt-1 truncate text-xs text-muted-foreground">{item.detail}</p>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                    <div className="max-h-[500px] space-y-2 overflow-y-auto pr-1">
+                      {recordsForSelectedDate.length === 0 ? (
+                        <p className="rounded-md border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
+                          Nenhum registro em {formatDateBR(selectedDate)}.
+                        </p>
+                      ) : (
+                        recordsForSelectedDate.map((record) => (
+                          <div key={record.id} className="rounded-md border border-border bg-background p-2.5">
+                            <p className="truncate text-sm font-semibold text-foreground">{record.title}</p>
+                            <p className="mt-1 text-xs font-medium text-primary">
+                              {record.time || '--:--'}{record.endTime ? ` - ${record.endTime}` : ''}
+                            </p>
+                            <p className="mt-1 truncate text-xs text-muted-foreground">{record.client || 'Sem cliente'} • {record.amount ? formatCurrency(record.amount) : 'Sem valor'}</p>
                           </div>
-
-                          {agendaTimelineItems.length === 0 ? (
-                            <div className="pointer-events-none absolute inset-x-[3.8rem] sm:inset-x-[4.5rem] top-6 rounded-md border border-dashed border-border bg-card/80 p-2.5 text-xs text-muted-foreground backdrop-blur-sm">
-                              Nenhum compromisso cadastrado para {formatDateBR(selectedDate)}.
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <Button
-                        type="button"
-                        variant="default"
-                        size="icon"
-                        className="absolute left-1/2 top-2 z-10 h-7 w-7 -translate-x-1/2 rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary"
-                        onClick={() => scrollTimelineBy(-timelineHourHeight * 3)}
-                      >
-                        <ChevronUp className="h-3.5 w-3.5" />
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant="default"
-                        size="icon"
-                        className="absolute bottom-2 left-1/2 z-10 h-7 w-7 -translate-x-1/2 rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary"
-                        onClick={() => scrollTimelineBy(timelineHourHeight * 3)}
-                      >
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      </Button>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1781,131 +1808,133 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
         </Dialog>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico do módulo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {records.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum registro salvo até o momento.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data cadastro</TableHead>
-                  <TableHead>{isNewClient ? 'Cliente' : isReports ? 'Indicador' : isSimpleSales ? 'Venda' : 'Título'}</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  {isFinancial ? (
-                    <>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead>Vencimento</TableHead>
-                      <TableHead>Status</TableHead>
-                    </>
-                  ) : isNewClient ? (
-                    <>
-                      <TableHead>Contato</TableHead>
-                      <TableHead>Funil</TableHead>
-                      <TableHead>Próx. contato</TableHead>
-                    </>
-                  ) : isReports ? (
-                    <>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Período</TableHead>
-                      <TableHead>Data referência</TableHead>
-                    </>
-                  ) : isSimpleSales ? (
-                    <>
-                      <TableHead>Qtd.</TableHead>
-                      <TableHead>Unitário</TableHead>
-                      <TableHead>Pagamento</TableHead>
-                      <TableHead>Status</TableHead>
-                    </>
-                  ) : (
-                    <TableHead>Data referência</TableHead>
-                  )}
-                  <TableHead>{isNewClient ? 'Potencial' : isReports ? 'Valor indicador' : 'Valor'}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {records.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell>{formatDateTime(record.createdAt)}</TableCell>
-                    <TableCell className="font-medium">{record.title}</TableCell>
-                    <TableCell>{record.client || '-'}</TableCell>
+      {!isAgenda ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Histórico do módulo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {records.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum registro salvo até o momento.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data cadastro</TableHead>
+                    <TableHead>{isNewClient ? 'Cliente' : isReports ? 'Indicador' : isSimpleSales ? 'Venda' : 'Título'}</TableHead>
+                    <TableHead>Cliente</TableHead>
                     {isFinancial ? (
                       <>
-                        <TableCell>
-                          <Badge variant={record.transactionType === 'saida' ? 'destructive' : 'default'}>
-                            {record.transactionType === 'saida' ? 'Saída' : 'Entrada'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{record.category || '-'}</TableCell>
-                        <TableCell>{record.dueDate || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant={record.isPaid ? 'secondary' : 'outline'}>
-                            {record.isPaid ? 'Quitado' : 'Pendente'}
-                          </Badge>
-                        </TableCell>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Categoria</TableHead>
+                        <TableHead>Vencimento</TableHead>
+                        <TableHead>Status</TableHead>
                       </>
                     ) : isNewClient ? (
                       <>
-                        <TableCell>{record.phone || record.email || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant={isClosedLead(record.stage) ? 'secondary' : 'default'}>
-                            {leadStages.find((stage) => stage.value === record.stage)?.label || 'Novo lead'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{record.nextContact ? formatDateBR(record.nextContact) : '-'}</TableCell>
+                        <TableHead>Contato</TableHead>
+                        <TableHead>Funil</TableHead>
+                        <TableHead>Próx. contato</TableHead>
                       </>
                     ) : isReports ? (
                       <>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {reportTypes.find((type) => type.value === record.reportType)?.label || 'Indicador'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{record.reportPeriod || record.date.slice(0, 7)}</TableCell>
-                        <TableCell>{record.date}</TableCell>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Período</TableHead>
+                        <TableHead>Data referência</TableHead>
                       </>
                     ) : isSimpleSales ? (
                       <>
-                        <TableCell>{record.quantity || 1}</TableCell>
-                        <TableCell>{record.unitPrice ? formatCurrency(record.unitPrice) : '-'}</TableCell>
-                        <TableCell>{record.paymentMethod || '-'}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              record.saleStatus === 'pago'
-                                ? 'secondary'
-                                : record.saleStatus === 'cancelado'
-                                  ? 'destructive'
-                                  : 'outline'
-                            }
-                          >
-                            {saleStatuses.find((status) => status.value === record.saleStatus)?.label || 'Pendente'}
-                          </Badge>
-                        </TableCell>
+                        <TableHead>Qtd.</TableHead>
+                        <TableHead>Unitário</TableHead>
+                        <TableHead>Pagamento</TableHead>
+                        <TableHead>Status</TableHead>
                       </>
                     ) : (
-                      <TableCell>{record.date}</TableCell>
+                      <TableHead>Data referência</TableHead>
                     )}
-                    <TableCell>
-                      {isNewClient
-                        ? record.potentialValue
-                          ? formatCurrency(record.potentialValue)
-                          : '-'
-                        : record.amount
-                          ? formatCurrency(record.amount)
-                          : '-'}
-                    </TableCell>
+                    <TableHead>{isNewClient ? 'Potencial' : isReports ? 'Valor indicador' : 'Valor'}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {records.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell>{formatDateTime(record.createdAt)}</TableCell>
+                      <TableCell className="font-medium">{record.title}</TableCell>
+                      <TableCell>{record.client || '-'}</TableCell>
+                      {isFinancial ? (
+                        <>
+                          <TableCell>
+                            <Badge variant={record.transactionType === 'saida' ? 'destructive' : 'default'}>
+                              {record.transactionType === 'saida' ? 'Saída' : 'Entrada'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{record.category || '-'}</TableCell>
+                          <TableCell>{record.dueDate || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant={record.isPaid ? 'secondary' : 'outline'}>
+                              {record.isPaid ? 'Quitado' : 'Pendente'}
+                            </Badge>
+                          </TableCell>
+                        </>
+                      ) : isNewClient ? (
+                        <>
+                          <TableCell>{record.phone || record.email || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant={isClosedLead(record.stage) ? 'secondary' : 'default'}>
+                              {leadStages.find((stage) => stage.value === record.stage)?.label || 'Novo lead'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{record.nextContact ? formatDateBR(record.nextContact) : '-'}</TableCell>
+                        </>
+                      ) : isReports ? (
+                        <>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {reportTypes.find((type) => type.value === record.reportType)?.label || 'Indicador'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{record.reportPeriod || record.date.slice(0, 7)}</TableCell>
+                          <TableCell>{record.date}</TableCell>
+                        </>
+                      ) : isSimpleSales ? (
+                        <>
+                          <TableCell>{record.quantity || 1}</TableCell>
+                          <TableCell>{record.unitPrice ? formatCurrency(record.unitPrice) : '-'}</TableCell>
+                          <TableCell>{record.paymentMethod || '-'}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                record.saleStatus === 'pago'
+                                  ? 'secondary'
+                                  : record.saleStatus === 'cancelado'
+                                    ? 'destructive'
+                                    : 'outline'
+                              }
+                            >
+                              {saleStatuses.find((status) => status.value === record.saleStatus)?.label || 'Pendente'}
+                            </Badge>
+                          </TableCell>
+                        </>
+                      ) : (
+                        <TableCell>{record.date}</TableCell>
+                      )}
+                      <TableCell>
+                        {isNewClient
+                          ? record.potentialValue
+                            ? formatCurrency(record.potentialValue)
+                            : '-'
+                          : record.amount
+                            ? formatCurrency(record.amount)
+                            : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
