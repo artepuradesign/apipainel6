@@ -1368,8 +1368,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           <CardContent className={isAgenda ? 'p-0' : undefined}>
             {isAgenda ? (
               <div className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,1fr)_minmax(280px,1fr)] xl:items-start">
-                  <div className="order-2 rounded-xl border border-border bg-card p-3 shadow-sm md:order-1">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(280px,1fr)] xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,1fr)_minmax(280px,1fr)] xl:items-start">
+                  <div className="order-2 min-w-0 rounded-xl border border-border bg-card p-3 shadow-sm md:order-1">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="text-sm font-semibold text-foreground">Linha do tempo diária</p>
