@@ -49,6 +49,81 @@ export const hasRangeConflict = (
   return occupiedRanges.some((range) => candidateStart < range.endMinutes && candidateEnd > range.startMinutes);
 };
 
+const roundToStep = (value: number, stepMinutes: number) => {
+  return Math.round(value / stepMinutes) * stepMinutes;
+};
+
+const normalizeRange = (start: number, end: number, stepMinutes: number) => {
+  const minDuration = stepMinutes;
+  let nextStart = clampMinutes(roundToStep(start, stepMinutes));
+  let nextEnd = clampMinutes(roundToStep(end, stepMinutes));
+
+  if (nextEnd <= nextStart) {
+    nextEnd = clampMinutes(nextStart + minDuration);
+  }
+
+  if (nextEnd - nextStart < minDuration) {
+    nextEnd = clampMinutes(nextStart + minDuration);
+  }
+
+  if (nextEnd > TOTAL_DAY_MINUTES) {
+    nextEnd = TOTAL_DAY_MINUTES;
+    nextStart = clampMinutes(nextEnd - minDuration);
+  }
+
+  return { start: nextStart, end: nextEnd };
+};
+
+const findFirstConflict = (start: number, end: number, occupiedRanges: AgendaTimeRange[]) => {
+  const sortedRanges = [...occupiedRanges].sort((a, b) => a.startMinutes - b.startMinutes);
+  return sortedRanges.find((range) => start < range.endMinutes && end > range.startMinutes);
+};
+
+const resolveRangeAcrossConflicts = (
+  candidateStart: number,
+  candidateEnd: number,
+  currentStart: number,
+  currentEnd: number,
+  occupiedRanges: AgendaTimeRange[],
+  stepMinutes: number
+) => {
+  const initial = normalizeRange(candidateStart, candidateEnd, stepMinutes);
+  const duration = Math.max(stepMinutes, initial.end - initial.start);
+  const movingRight = initial.start >= currentStart || initial.end >= currentEnd;
+
+  let nextStart = initial.start;
+  let nextEnd = initial.end;
+
+  for (let attempts = 0; attempts < occupiedRanges.length + 3; attempts += 1) {
+    const conflict = findFirstConflict(nextStart, nextEnd, occupiedRanges);
+    if (!conflict) {
+      return { start: nextStart, end: nextEnd };
+    }
+
+    if (movingRight) {
+      nextStart = conflict.endMinutes;
+      nextEnd = nextStart + duration;
+
+      if (nextEnd > TOTAL_DAY_MINUTES) {
+        return null;
+      }
+    } else {
+      nextEnd = conflict.startMinutes;
+      nextStart = nextEnd - duration;
+
+      if (nextStart < 0) {
+        return null;
+      }
+    }
+
+    const normalized = normalizeRange(nextStart, nextEnd, stepMinutes);
+    nextStart = normalized.start;
+    nextEnd = normalized.end;
+  }
+
+  return null;
+};
+
 const AgendaTimeRangePicker = ({
   startTime,
   endTime,
@@ -63,7 +138,7 @@ const AgendaTimeRangePicker = ({
   const duration = Math.max(stepMinutes, endMinutes - startMinutes);
 
   const occupiedLabel = occupiedRanges.length
-    ? occupiedRanges
+    ? [...occupiedRanges]
         .sort((a, b) => a.startMinutes - b.startMinutes)
         .slice(0, 4)
         .map((range) => `${minutesToTime(range.startMinutes)}-${minutesToTime(range.endMinutes)}`)
@@ -73,17 +148,23 @@ const AgendaTimeRangePicker = ({
   const handleRangeChange = (nextRange: number[]) => {
     if (nextRange.length < 2) return;
 
-    const nextStart = Math.min(nextRange[0], nextRange[1]);
-    const nextEnd = Math.max(nextRange[0], nextRange[1]);
+    const candidateStart = Math.min(nextRange[0], nextRange[1]);
+    const candidateEnd = Math.max(nextRange[0], nextRange[1]);
+    const resolved = resolveRangeAcrossConflicts(
+      candidateStart,
+      candidateEnd,
+      startMinutes,
+      Math.max(startMinutes + stepMinutes, endMinutes),
+      occupiedRanges,
+      stepMinutes
+    );
 
-    if (nextEnd <= nextStart) return;
-
-    if (hasRangeConflict(nextStart, nextEnd, occupiedRanges)) {
+    if (!resolved) {
       onBlockedChange?.();
       return;
     }
 
-    onChange(minutesToTime(nextStart), minutesToTime(nextEnd));
+    onChange(minutesToTime(resolved.start), minutesToTime(resolved.end));
   };
 
   return (
