@@ -297,14 +297,38 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     return records
       .filter((record) => record.date === selectedDate)
       .sort((a, b) => {
-        const timeDiff = toTimeMinutes(a.time) - toTimeMinutes(b.time);
+        const timeDiff = timeToMinutes(a.time) - timeToMinutes(b.time);
         if (timeDiff !== 0) return timeDiff;
         return toIsoDateTime(a.createdAt).localeCompare(toIsoDateTime(b.createdAt));
       });
   }, [records, selectedDate]);
 
+  const agendaOccupiedRangesForFormDate = useMemo(() => {
+    if (!isAgenda || !form.date) return [];
+
+    return records
+      .filter((record) => record.date === form.date && record.id !== editingRecordId)
+      .map((record) => ({
+        id: record.id,
+        title: record.title,
+        startMinutes: timeToMinutes(record.time),
+        endMinutes: timeToMinutes(record.endTime),
+      }))
+      .filter((record) => record.endMinutes > record.startMinutes);
+  }, [editingRecordId, form.date, isAgenda, records]);
+
   const agendaTimelineItems = useMemo(() => {
-    if (!isAgenda) return [] as Array<{ id: string; timeLabel: string; title: string; detail: string }>;
+    if (!isAgenda) {
+      return [] as Array<{
+        id: string;
+        title: string;
+        detail: string;
+        startTime: string;
+        endTime: string;
+        startMinutes: number;
+        endMinutes: number;
+      }>;
+    }
 
     return recordsForSelectedDate.map((record) => {
       const parsedDate = new Date(toIsoDateTime(record.createdAt));
@@ -312,14 +336,20 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       const createdAtTime = Number.isNaN(parsedDate.getTime())
         ? fallbackTime
         : parsedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
       const startTime = record.time || createdAtTime;
-      const endTime = record.endTime || '';
+      const endTime = record.endTime || '10:00';
+      const startMinutes = timeToMinutes(startTime);
+      const endMinutes = Math.max(startMinutes + 15, timeToMinutes(endTime));
 
       return {
         id: record.id,
-        timeLabel: endTime ? `${startTime} - ${endTime}` : startTime,
         title: record.title,
         detail: `${record.client || 'Sem cliente'} • ${record.amount ? formatCurrency(record.amount) : 'Sem valor'}`,
+        startTime,
+        endTime,
+        startMinutes,
+        endMinutes,
       };
     });
   }, [isAgenda, recordsForSelectedDate]);
