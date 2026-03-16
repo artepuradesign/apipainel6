@@ -1481,7 +1481,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                   </div>
 
                   {agendaCalendarPanels.map((panel) => (
-                    <div key={panel.id} className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                    <div key={panel.id} className={`${panel.visibilityClass} order-1 rounded-xl border border-border bg-card p-3 shadow-sm md:order-2`}>
                       <div className="mb-3 flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
                         <p className="text-sm font-semibold text-foreground">{panel.title}</p>
                         <Badge variant="secondary">{datesWithAppointments.length} dias ativos</Badge>
