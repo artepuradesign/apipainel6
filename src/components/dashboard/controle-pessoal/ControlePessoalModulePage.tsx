@@ -1124,12 +1124,14 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                   </div>
 
                   <div className="space-y-4">
-                    {agendaTimelineItems.map((item) => (
+                    {agendaTimelineItems.map((item, index) => (
                       <div key={item.id} className="grid grid-cols-[58px_minmax(0,1fr)] gap-3">
                         <p className="text-xs font-semibold text-muted-foreground">{item.time}</p>
                         <div className="relative rounded-md border border-border bg-background p-3">
                           <span className="absolute -left-[11px] top-4 h-2.5 w-2.5 rounded-full bg-primary" />
-                          <span className="absolute -left-[7px] top-6 bottom-[-22px] w-px bg-border last:hidden" />
+                          {index < agendaTimelineItems.length - 1 ? (
+                            <span className="absolute -left-[7px] top-6 bottom-[-22px] w-px bg-border" />
+                          ) : null}
                           <p className="text-sm font-medium">{item.title}</p>
                           <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
                           {item.isPlaceholder ? <Badge variant="outline" className="mt-2">Livre</Badge> : null}
