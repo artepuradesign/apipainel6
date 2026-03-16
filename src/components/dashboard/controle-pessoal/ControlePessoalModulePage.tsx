@@ -5,6 +5,7 @@ import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import PageHeaderCard from '@/components/dashboard/PageHeaderCard';
 import SimpleTitleBar from '@/components/dashboard/SimpleTitleBar';
+import AgendaTimeRangePicker, { hasRangeConflict, timeToMinutes } from '@/components/dashboard/controle-pessoal/AgendaTimeRangePicker';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -129,12 +130,6 @@ const fromISODate = (isoDate: string) => {
 const toIsoDateTime = (value?: string) => {
   if (!value) return new Date().toISOString();
   return value.includes('T') ? value : value.replace(' ', 'T');
-};
-
-const toTimeMinutes = (time?: string) => {
-  if (!time || !time.includes(':')) return Number.POSITIVE_INFINITY;
-  const [hour, minute] = time.split(':').map(Number);
-  return hour * 60 + minute;
 };
 
 const formatCurrency = (value: number) =>
@@ -302,14 +297,38 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     return records
       .filter((record) => record.date === selectedDate)
       .sort((a, b) => {
-        const timeDiff = toTimeMinutes(a.time) - toTimeMinutes(b.time);
+        const timeDiff = timeToMinutes(a.time) - timeToMinutes(b.time);
         if (timeDiff !== 0) return timeDiff;
         return toIsoDateTime(a.createdAt).localeCompare(toIsoDateTime(b.createdAt));
       });
   }, [records, selectedDate]);
 
+  const agendaOccupiedRangesForFormDate = useMemo(() => {
+    if (!isAgenda || !form.date) return [];
+
+    return records
+      .filter((record) => record.date === form.date && record.id !== editingRecordId)
+      .map((record) => ({
+        id: record.id,
+        title: record.title,
+        startMinutes: timeToMinutes(record.time),
+        endMinutes: timeToMinutes(record.endTime),
+      }))
+      .filter((record) => record.endMinutes > record.startMinutes);
+  }, [editingRecordId, form.date, isAgenda, records]);
+
   const agendaTimelineItems = useMemo(() => {
-    if (!isAgenda) return [] as Array<{ id: string; timeLabel: string; title: string; detail: string }>;
+    if (!isAgenda) {
+      return [] as Array<{
+        id: string;
+        title: string;
+        detail: string;
+        startTime: string;
+        endTime: string;
+        startMinutes: number;
+        endMinutes: number;
+      }>;
+    }
 
     return recordsForSelectedDate.map((record) => {
       const parsedDate = new Date(toIsoDateTime(record.createdAt));
@@ -317,14 +336,20 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       const createdAtTime = Number.isNaN(parsedDate.getTime())
         ? fallbackTime
         : parsedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
       const startTime = record.time || createdAtTime;
-      const endTime = record.endTime || '';
+      const endTime = record.endTime || '10:00';
+      const startMinutes = timeToMinutes(startTime);
+      const endMinutes = Math.max(startMinutes + 15, timeToMinutes(endTime));
 
       return {
         id: record.id,
-        timeLabel: endTime ? `${startTime} - ${endTime}` : startTime,
         title: record.title,
         detail: `${record.client || 'Sem cliente'} • ${record.amount ? formatCurrency(record.amount) : 'Sem valor'}`,
+        startTime,
+        endTime,
+        startMinutes,
+        endMinutes,
       };
     });
   }, [isAgenda, recordsForSelectedDate]);
@@ -620,9 +645,19 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       return;
     }
 
-    if (isAgenda && form.time && form.endTime && toTimeMinutes(form.endTime) <= toTimeMinutes(form.time)) {
-      toast.error('A hora de término deve ser maior que a hora de início.');
-      return;
+    if (isAgenda && form.time && form.endTime) {
+      const startMinutes = timeToMinutes(form.time);
+      const endMinutes = timeToMinutes(form.endTime);
+
+      if (endMinutes <= startMinutes) {
+        toast.error('A hora de término deve ser maior que a hora de início.');
+        return;
+      }
+
+      if (hasRangeConflict(startMinutes, endMinutes, agendaOccupiedRangesForFormDate)) {
+        toast.error('Este horário já está reservado. Escolha outro intervalo.');
+        return;
+      }
     }
 
     if (isFinancial && (!form.amount || Number(form.amount) <= 0)) {
@@ -712,7 +747,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
       toast.success(isEditing ? 'Compromisso atualizado com sucesso.' : 'Registro salvo com sucesso.');
     } catch (error) {
       console.error('Erro ao salvar controle pessoal:', error);
-      toast.error('Não foi possível salvar no banco de dados.');
+      toast.error(error instanceof Error ? error.message : 'Não foi possível salvar no banco de dados.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1290,42 +1325,65 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                       Nenhum compromisso cadastrado para {formatDateBR(selectedDate)}.
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {agendaTimelineItems.map((item, index) => (
-                        <div key={item.id} className="grid grid-cols-[92px_minmax(0,1fr)] gap-3">
-                          <p className="text-xs font-semibold text-muted-foreground">{item.timeLabel}</p>
-                          <div className="relative rounded-md border border-border bg-background p-3">
-                            <span className="absolute -left-[11px] top-4 h-2.5 w-2.5 rounded-full bg-primary" />
-                            {index < agendaTimelineItems.length - 1 ? (
-                              <span className="absolute -left-[7px] top-6 bottom-[-22px] w-px bg-border" />
-                            ) : null}
-                            <div className="flex flex-wrap items-start justify-between gap-2">
-                              <p className="text-sm font-medium">{item.title}</p>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => handleEditAgendaRecord(item.id)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => handleDeleteAgendaRecord(item.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
+                    <div className="rounded-md border border-border bg-background p-3">
+                      <div className="relative h-[720px] overflow-y-auto pr-2">
+                        {Array.from({ length: 25 }).map((_, hour) => {
+                          const top = (hour / 24) * 100;
+                          return (
+                            <div key={hour} className="absolute inset-x-0" style={{ top: `${top}%` }}>
+                              <div className="ml-14 border-t border-border/70" />
+                              {hour < 24 ? (
+                                <span className="absolute left-0 -translate-y-1/2 text-[10px] font-medium text-muted-foreground">
+                                  {`${String(hour).padStart(2, '0')}:00`}
+                                </span>
+                              ) : null}
                             </div>
-                            <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
-                          </div>
+                          );
+                        })}
+
+                        <div className="absolute inset-y-0 left-16 right-2">
+                          {agendaTimelineItems.map((item) => {
+                            const top = (item.startMinutes / 1440) * 100;
+                            const height = Math.max(((item.endMinutes - item.startMinutes) / 1440) * 100, 4);
+
+                            return (
+                              <div
+                                key={item.id}
+                                className="absolute left-0 right-0 rounded-md border border-border bg-card p-2 shadow-sm"
+                                style={{ top: `${top}%`, height: `${height}%` }}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <p className="text-[11px] font-semibold text-muted-foreground">{item.startTime} - {item.endTime}</p>
+                                    <p className="text-sm font-medium leading-tight">{item.title}</p>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() => handleEditAgendaRecord(item.id)}
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() => handleDeleteAgendaRecord(item.id)}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <p className="mt-1 truncate text-xs text-muted-foreground">{item.detail}</p>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1492,7 +1550,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           <DialogContent className="sm:max-w-xl">
             <DialogHeader>
               <DialogTitle>{editingRecordId ? 'Editar compromisso' : 'Novo compromisso'}</DialogTitle>
-              <DialogDescription>Preencha os dados com início e término para exibir a duração na linha do tempo.</DialogDescription>
+              <DialogDescription>Arraste o intervalo de horário; períodos já ocupados ficam bloqueados automaticamente.</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
@@ -1506,8 +1564,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2 sm:col-span-1">
+              <div className="space-y-4">
+                <div className="space-y-2">
                   <Label htmlFor="agenda-data">Data</Label>
                   <Input
                     id="agenda-data"
@@ -1520,23 +1578,29 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                     }}
                   />
                 </div>
-                <div className="space-y-2 sm:col-span-1">
-                  <Label htmlFor="agenda-inicio">Início</Label>
-                  <Input
-                    id="agenda-inicio"
-                    type="time"
-                    value={form.time}
-                    onChange={(e) => setForm((prev) => ({ ...prev, time: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2 sm:col-span-1">
-                  <Label htmlFor="agenda-termino">Término</Label>
-                  <Input
-                    id="agenda-termino"
-                    type="time"
-                    value={form.endTime}
-                    onChange={(e) => setForm((prev) => ({ ...prev, endTime: e.target.value }))}
-                  />
+
+                <AgendaTimeRangePicker
+                  startTime={form.time}
+                  endTime={form.endTime}
+                  occupiedRanges={agendaOccupiedRangesForFormDate}
+                  onChange={(nextStartTime, nextEndTime) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      time: nextStartTime,
+                      endTime: nextEndTime,
+                    }));
+                  }}
+                />
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="agenda-inicio">Hora de início</Label>
+                    <Input id="agenda-inicio" value={form.time} readOnly />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="agenda-termino">Hora de término</Label>
+                    <Input id="agenda-termino" value={form.endTime} readOnly />
+                  </div>
                 </div>
               </div>
 

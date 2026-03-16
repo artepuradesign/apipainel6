@@ -115,6 +115,19 @@ class ControlePessoalController {
                 'metadata' => $input['metadata'] ?? null,
             ];
 
+            if ($modulo === 'agenda') {
+                $meta = is_array($payload['metadata']) ? $payload['metadata'] : [];
+                $startTime = isset($meta['time']) ? (string)$meta['time'] : '';
+                $endTime = isset($meta['endTime']) ? (string)$meta['endTime'] : '';
+
+                if ($startTime !== '' && $endTime !== '') {
+                    $conflicts = $this->model->findAgendaConflicts($targetUserId, $dataReferencia, $startTime, $endTime);
+                    if (!empty($conflicts)) {
+                        Response::error('Já existe compromisso neste intervalo de horário.', 422);
+                    }
+                }
+            }
+
             $id = $this->model->createRecord($payload);
             $created = $this->model->findById($id, $currentUserId, true);
 
@@ -164,6 +177,25 @@ class ControlePessoalController {
             $exists = $this->model->findById((int)$id, $currentUserId, $canViewAll);
             if (!$exists) {
                 Response::notFound('Registro não encontrado');
+            }
+
+            $targetModulo = isset($input['modulo']) ? (string)$input['modulo'] : (string)($exists['modulo'] ?? '');
+            $targetDate = isset($input['data_referencia']) ? trim((string)$input['data_referencia']) : (string)($exists['data_referencia'] ?? '');
+            $existingMetadata = is_array($exists['metadata']) ? $exists['metadata'] : [];
+            $incomingMetadata = isset($input['metadata']) && is_array($input['metadata']) ? $input['metadata'] : [];
+            $mergedMetadata = array_merge($existingMetadata, $incomingMetadata);
+
+            if ($targetModulo === 'agenda') {
+                $startTime = isset($mergedMetadata['time']) ? (string)$mergedMetadata['time'] : '';
+                $endTime = isset($mergedMetadata['endTime']) ? (string)$mergedMetadata['endTime'] : '';
+
+                if ($startTime !== '' && $endTime !== '') {
+                    $targetUserId = (int)($exists['user_id'] ?? $currentUserId);
+                    $conflicts = $this->model->findAgendaConflicts($targetUserId, $targetDate, $startTime, $endTime, (int)$id);
+                    if (!empty($conflicts)) {
+                        Response::error('Já existe compromisso neste intervalo de horário.', 422);
+                    }
+                }
             }
 
             $updated = $this->model->updateRecord((int)$id, $input, $currentUserId, $canViewAll);
