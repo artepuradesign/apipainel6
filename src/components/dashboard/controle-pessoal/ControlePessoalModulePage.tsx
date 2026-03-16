@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DayContentProps } from 'react-day-picker';
 import { LucideIcon, Plus, PlusCircle, CalendarDays, Wallet, Users, FileText, ShoppingCart, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { addMonths, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import PageHeaderCard from '@/components/dashboard/PageHeaderCard';
@@ -580,6 +581,35 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     const isoDate = toISODate(date);
     setSelectedDate(isoDate);
     setForm((prev) => ({ ...prev, date: isoDate }));
+  };
+
+  const selectedDateObject = useMemo(() => fromISODate(selectedDate), [selectedDate]);
+  const agendaBaseMonth = useMemo(() => startOfMonth(fromISODate(todayIso)), [todayIso]);
+
+  const agendaCalendarPanels = useMemo(
+    () => [
+      { id: 'previous', month: addMonths(agendaBaseMonth, -1), visibilityClass: 'hidden xl:block' },
+      { id: 'current', month: agendaBaseMonth, visibilityClass: '' },
+      { id: 'next', month: addMonths(agendaBaseMonth, 1), visibilityClass: 'hidden md:block' },
+    ],
+    [agendaBaseMonth]
+  );
+
+  const agendaCalendarClassNames = {
+    months: 'w-full',
+    month: 'w-full space-y-3',
+    caption: 'flex justify-center pt-1 relative items-center',
+    caption_label: 'text-sm font-semibold text-foreground',
+    nav_button: 'h-8 w-8 rounded-md border border-border bg-card text-foreground hover:bg-accent hover:text-accent-foreground',
+    table: 'w-full border-collapse',
+    head_row: 'grid grid-cols-7 gap-0.5',
+    row: 'mt-1 grid grid-cols-7 gap-0.5',
+    head_cell: 'text-muted-foreground rounded-md text-center text-[0.72rem] font-medium uppercase tracking-wider',
+    cell: 'h-11 text-center text-sm p-0 relative focus-within:relative focus-within:z-20',
+    day: 'mx-auto flex h-10 w-10 items-center justify-center rounded-full p-0 text-sm font-medium text-foreground transition-colors hover:bg-accent/70',
+    day_selected: 'rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary focus:bg-primary',
+    day_today: 'rounded-full bg-success text-success-foreground shadow-sm hover:bg-success focus:bg-success',
+    day_outside: 'text-muted-foreground/60 opacity-80',
   };
 
   const AgendaDayContent = useCallback(
@@ -1338,47 +1368,39 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           </CardHeader>
           <CardContent>
             {isAgenda ? (
-              <div className="grid gap-5 xl:grid-cols-[minmax(350px,420px)_minmax(0,1fr)] xl:items-start">
+              <div className="space-y-4">
                 <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
                   <div className="mb-3 flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
                     <p className="text-sm font-semibold text-foreground">Calendário de compromissos</p>
                     <Badge variant="secondary">{datesWithAppointments.length} dias ativos</Badge>
                   </div>
 
-                  <Calendar
-                    locale={ptBR}
-                    mode="single"
-                    selected={fromISODate(selectedDate)}
-                    onSelect={handleDaySelect}
-                    defaultMonth={fromISODate(selectedDate)}
-                    className="w-full rounded-xl border border-border/60 bg-background p-2 pointer-events-auto"
-                    classNames={{
-                      months: 'w-full',
-                      month: 'w-full space-y-3',
-                      caption: 'flex justify-center pt-1 relative items-center',
-                      caption_label: 'text-sm font-semibold text-foreground',
-                      nav_button: 'h-8 w-8 rounded-md border border-border bg-card text-foreground hover:bg-accent hover:text-accent-foreground',
-                      table: 'w-full border-collapse',
-                      head_row: 'grid grid-cols-7 gap-0.5',
-                      row: 'mt-1 grid grid-cols-7 gap-0.5',
-                      head_cell: 'text-muted-foreground rounded-md text-center text-[0.72rem] font-medium uppercase tracking-wider',
-                      cell: 'h-11 text-center text-sm p-0 relative focus-within:relative focus-within:z-20',
-                      day: 'mx-auto flex h-10 w-10 items-center justify-center rounded-full p-0 text-sm font-medium text-foreground transition-colors hover:bg-accent/70',
-                      day_selected: 'rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary focus:bg-primary',
-                      day_today: 'rounded-full bg-success text-success-foreground shadow-sm hover:bg-success focus:bg-success',
-                      day_outside: 'text-muted-foreground/60 opacity-80',
-                    }}
-                    modifiers={{ hasAppointments: datesWithAppointments }}
-                    modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
-                    components={{ DayContent: AgendaDayContent }}
-                  />
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {agendaCalendarPanels.map((panel) => (
+                      <div key={panel.id} className={`${panel.visibilityClass} rounded-lg border border-border bg-background p-2 w-full overflow-hidden`}>
+                        <Calendar
+                          locale={ptBR}
+                          mode="single"
+                          month={panel.month}
+                          disableNavigation
+                          selected={selectedDateObject}
+                          onSelect={handleDaySelect}
+                          className="w-full pointer-events-auto"
+                          classNames={agendaCalendarClassNames}
+                          modifiers={{ hasAppointments: datesWithAppointments }}
+                          modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
+                          components={{ DayContent: AgendaDayContent }}
+                        />
+                      </div>
+                    ))}
+                  </div>
 
                   <div className="mt-3 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
                     <span className="font-semibold text-foreground">Data selecionada:</span> {formatDateBR(selectedDate)}
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-border bg-card p-3 shadow-sm xl:max-w-[390px]">
+                <div className="rounded-xl border border-border bg-card p-3 shadow-sm w-full xl:max-w-[760px]">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-sm font-semibold text-foreground">Linha do tempo diária</p>
@@ -1393,7 +1415,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                     <div className="relative">
                       <div
                         ref={timelineScrollRef}
-                        className="relative h-[520px] overflow-y-auto rounded-md border border-border/70 bg-background pr-1 cursor-grab active:cursor-grabbing select-none"
+                        className="relative h-[500px] overflow-y-auto rounded-md border border-border/70 bg-background pr-1 cursor-grab active:cursor-grabbing select-none"
                         onMouseDown={handleTimelineDragStart}
                         onMouseMove={handleTimelineDragMove}
                         onMouseUp={stopTimelineDrag}
@@ -1406,14 +1428,14 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                               className="absolute inset-x-0"
                               style={{ top: `${hour * timelineHourHeight}px` }}
                             >
-                              <span className="absolute left-3 -translate-y-1/2 text-[13px] font-semibold text-muted-foreground">
+                              <span className="absolute left-2 sm:left-3 -translate-y-1/2 text-[12px] font-semibold text-muted-foreground">
                                 {`${String(hour).padStart(2, '0')}:00`}
                               </span>
-                              <div className="ml-20 border-t border-border/60" />
+                              <div className="ml-14 sm:ml-16 border-t border-border/60" />
                             </div>
                           ))}
 
-                          <div className="absolute inset-y-0 left-[5.5rem] right-2">
+                          <div className="absolute inset-y-0 left-[3.8rem] sm:left-[4.5rem] right-1 sm:right-2">
                             {agendaTimelineItems.map((item) => {
                               const top = (item.startMinutes / 60) * timelineHourHeight;
                               const height = Math.max(((item.endMinutes - item.startMinutes) / 60) * timelineHourHeight, 52);
@@ -1459,7 +1481,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                           </div>
 
                           {agendaTimelineItems.length === 0 ? (
-                            <div className="pointer-events-none absolute inset-x-[5.5rem] top-6 rounded-md border border-dashed border-border bg-card/80 p-2.5 text-xs text-muted-foreground backdrop-blur-sm">
+                            <div className="pointer-events-none absolute inset-x-[3.8rem] sm:inset-x-[4.5rem] top-6 rounded-md border border-dashed border-border bg-card/80 p-2.5 text-xs text-muted-foreground backdrop-blur-sm">
                               Nenhum compromisso cadastrado para {formatDateBR(selectedDate)}.
                             </div>
                           ) : null}
