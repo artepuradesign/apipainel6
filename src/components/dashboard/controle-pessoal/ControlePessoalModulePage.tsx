@@ -1368,38 +1368,7 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
           <CardContent>
             {isAgenda ? (
               <div className="space-y-4">
-                <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-                  <div className="mb-3 flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
-                    <p className="text-sm font-semibold text-foreground">Calendário de compromissos</p>
-                    <Badge variant="secondary">{datesWithAppointments.length} dias ativos</Badge>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    {agendaCalendarPanels.map((panel) => (
-                      <div key={panel.id} className={`${panel.visibilityClass} rounded-lg border border-border bg-background p-2 w-full overflow-hidden`}>
-                        <Calendar
-                          locale={ptBR}
-                          mode="single"
-                          month={panel.month}
-                          disableNavigation
-                          selected={selectedDateObject}
-                          onSelect={handleDaySelect}
-                          className="w-full pointer-events-auto"
-                          classNames={agendaCalendarClassNames}
-                          modifiers={{ hasAppointments: datesWithAppointments }}
-                          modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
-                          components={{ DayContent: AgendaDayContent }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-3 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">Data selecionada:</span> {formatDateBR(selectedDate)}
-                  </div>
-                </div>
-
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] xl:items-start">
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,1fr)_minmax(280px,1fr)] xl:items-start">
                   <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                       <div>
@@ -1511,29 +1480,58 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-foreground">Histórico do dia</p>
-                      <Badge variant="secondary">{recordsForSelectedDate.length}</Badge>
-                    </div>
+                  {agendaCalendarPanels.map((panel) => (
+                    <div key={panel.id} className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                      <div className="mb-3 flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
+                        <p className="text-sm font-semibold text-foreground">{panel.title}</p>
+                        <Badge variant="secondary">{datesWithAppointments.length} dias ativos</Badge>
+                      </div>
 
-                    <div className="max-h-[500px] space-y-2 overflow-y-auto pr-1">
-                      {recordsForSelectedDate.length === 0 ? (
-                        <p className="rounded-md border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
-                          Nenhum registro em {formatDateBR(selectedDate)}.
-                        </p>
-                      ) : (
-                        recordsForSelectedDate.map((record) => (
-                          <div key={record.id} className="rounded-md border border-border bg-background p-2.5">
-                            <p className="truncate text-sm font-semibold text-foreground">{record.title}</p>
-                            <p className="mt-1 text-xs font-medium text-primary">
-                              {record.time || '--:--'}{record.endTime ? ` - ${record.endTime}` : ''}
-                            </p>
-                            <p className="mt-1 truncate text-xs text-muted-foreground">{record.client || 'Sem cliente'} • {record.amount ? formatCurrency(record.amount) : 'Sem valor'}</p>
-                          </div>
-                        ))
-                      )}
+                      <div className="rounded-lg border border-border bg-background p-2 w-full overflow-hidden">
+                        <Calendar
+                          locale={ptBR}
+                          mode="single"
+                          month={panel.month}
+                          disableNavigation
+                          selected={selectedDateObject}
+                          onSelect={handleDaySelect}
+                          className="w-full pointer-events-auto"
+                          classNames={agendaCalendarClassNames}
+                          modifiers={{ hasAppointments: datesWithAppointments }}
+                          modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
+                          components={{ DayContent: AgendaDayContent }}
+                        />
+                      </div>
+
+                      <div className="mt-3 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">Data selecionada:</span> {formatDateBR(selectedDate)}
+                      </div>
                     </div>
+                  ))}
+                </div>
+
+                <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-foreground">Histórico do dia</p>
+                    <Badge variant="secondary">{recordsForSelectedDate.length}</Badge>
+                  </div>
+
+                  <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                    {recordsForSelectedDate.length === 0 ? (
+                      <p className="rounded-md border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
+                        Nenhum registro em {formatDateBR(selectedDate)}.
+                      </p>
+                    ) : (
+                      recordsForSelectedDate.map((record) => (
+                        <div key={record.id} className="rounded-md border border-border bg-background p-2.5">
+                          <p className="truncate text-sm font-semibold text-foreground">{record.title}</p>
+                          <p className="mt-1 text-xs font-medium text-primary">
+                            {record.time || '--:--'}{record.endTime ? ` - ${record.endTime}` : ''}
+                          </p>
+                          <p className="mt-1 truncate text-xs text-muted-foreground">{record.client || 'Sem cliente'} • {record.amount ? formatCurrency(record.amount) : 'Sem valor'}</p>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
