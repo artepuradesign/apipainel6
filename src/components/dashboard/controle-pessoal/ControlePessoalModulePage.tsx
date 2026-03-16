@@ -181,6 +181,8 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
   const [records, setRecords] = useState<ControlePessoalRecord[]>([]);
   const [selectedDate, setSelectedDate] = useState(todayIso);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     title: '',
     date: todayIso,
@@ -255,35 +257,26 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
     };
   }, []);
 
-  useEffect(() => {
-    let active = true;
+  const loadRecords = useCallback(async () => {
+    if (!user?.id) {
+      setRecords([]);
+      return;
+    }
 
-    const loadRecords = async () => {
-      if (!user?.id) {
-        setRecords([]);
-        return;
-      }
-
-      try {
-        const response = await apiRequest<any>(`${endpoint}?limit=100&offset=0`, { method: 'GET' });
-        const items = Array.isArray(response?.data?.items) ? (response.data.items as ControlePessoalApiItem[]) : [];
-
-        if (!active) return;
-        setRecords(items.map(mapApiItemToRecord));
-      } catch (error) {
-        if (!active) return;
-        setRecords([]);
-        toast.error('Não foi possível carregar os registros da agenda.');
-        console.error('Erro ao carregar controle pessoal:', error);
-      }
-    };
-
-    loadRecords();
-
-    return () => {
-      active = false;
-    };
+    try {
+      const response = await apiRequest<any>(`${endpoint}?limit=100&offset=0`, { method: 'GET' });
+      const items = Array.isArray(response?.data?.items) ? (response.data.items as ControlePessoalApiItem[]) : [];
+      setRecords(items.map(mapApiItemToRecord));
+    } catch (error) {
+      setRecords([]);
+      toast.error('Não foi possível carregar os registros da agenda.');
+      console.error('Erro ao carregar controle pessoal:', error);
+    }
   }, [endpoint, mapApiItemToRecord, user?.id]);
+
+  useEffect(() => {
+    void loadRecords();
+  }, [loadRecords]);
 
   useEffect(() => {
     setForm((prev) => ({ ...prev, date: prev.date || selectedDate }));
