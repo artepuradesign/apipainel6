@@ -1,0 +1,1394 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { DayContentProps } from 'react-day-picker';
+import { LucideIcon, PlusCircle, CalendarDays, Wallet, Users, FileText, ShoppingCart } from 'lucide-react';
+import PageHeaderCard from '@/components/dashboard/PageHeaderCard';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Calendar } from '@/components/ui/calendar';
+import { useAuth } from '@/contexts/AuthContext';
+import { todayBrasilia } from '@/utils/timezone';
+import { formatCpf, formatPhone } from '@/utils/formatters';
+import { toast } from 'sonner';
+
+export type ControlePessoalModuleType = 'agenda' | 'financeiro' | 'novocliente' | 'relatorios' | 'vendasimples';
+
+type TransactionType = 'entrada' | 'saida';
+type LeadStage = 'novo' | 'contato' | 'proposta' | 'negociacao' | 'fechado-ganho' | 'fechado-perdido';
+type ReportType = 'faturamento' | 'despesas' | 'clientes' | 'vendas' | 'operacional';
+type SaleStatus = 'pendente' | 'pago' | 'cancelado';
+
+interface ControlePessoalRecord {
+  id: string;
+  title: string;
+  date: string;
+  amount?: number;
+  client?: string;
+  notes?: string;
+  createdAt: string;
+  transactionType?: TransactionType;
+  category?: string;
+  paymentMethod?: string;
+  dueDate?: string;
+  isPaid?: boolean;
+  phone?: string;
+  email?: string;
+  document?: string;
+  source?: string;
+  stage?: LeadStage;
+  nextContact?: string;
+  potentialValue?: number;
+  reportType?: ReportType;
+  reportPeriod?: string;
+  saleStatus?: SaleStatus;
+  quantity?: number;
+  unitPrice?: number;
+}
+
+interface ControlePessoalModulePageProps {
+  moduleType: ControlePessoalModuleType;
+  title: string;
+  subtitle: string;
+  formTitle: string;
+}
+
+const moduleIconMap: Record<ControlePessoalModuleType, LucideIcon> = {
+  agenda: CalendarDays,
+  financeiro: Wallet,
+  novocliente: Users,
+  relatorios: FileText,
+  vendasimples: ShoppingCart,
+};
+
+const financialCategories = ['Vendas', 'Serviços', 'Fornecedores', 'Transporte', 'Marketing', 'Impostos', 'Outros'];
+const financialPaymentMethods = ['PIX', 'Dinheiro', 'Cartão', 'Boleto', 'Transferência', 'Outro'];
+const clientSources = ['Instagram', 'WhatsApp', 'Indicação', 'Site', 'Google', 'Outro'];
+const leadStages: { label: string; value: LeadStage }[] = [
+  { label: 'Novo lead', value: 'novo' },
+  { label: 'Primeiro contato', value: 'contato' },
+  { label: 'Proposta enviada', value: 'proposta' },
+  { label: 'Em negociação', value: 'negociacao' },
+  { label: 'Fechado - ganho', value: 'fechado-ganho' },
+  { label: 'Fechado - perdido', value: 'fechado-perdido' },
+];
+const reportTypes: { label: string; value: ReportType }[] = [
+  { label: 'Faturamento', value: 'faturamento' },
+  { label: 'Despesas', value: 'despesas' },
+  { label: 'Clientes', value: 'clientes' },
+  { label: 'Vendas', value: 'vendas' },
+  { label: 'Operacional', value: 'operacional' },
+];
+const saleStatuses: { label: string; value: SaleStatus }[] = [
+  { label: 'Pendente', value: 'pendente' },
+  { label: 'Pago', value: 'pago' },
+  { label: 'Cancelado', value: 'cancelado' },
+];
+
+const toISODate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const fromISODate = (isoDate: string) => {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const formatCurrency = (value: number) =>
+  value.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+
+const formatDateTime = (date: string) =>
+  new Date(date).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+const formatDateBR = (isoDate: string) =>
+  fromISODate(isoDate).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+
+const getDayDiff = (fromDate: string, toDate: string) => {
+  const from = fromISODate(fromDate);
+  const to = fromISODate(toDate);
+  from.setHours(0, 0, 0, 0);
+  to.setHours(0, 0, 0, 0);
+  return Math.round((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+};
+
+const isClosedLead = (stage?: LeadStage) => stage === 'fechado-ganho' || stage === 'fechado-perdido';
+
+const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: ControlePessoalModulePageProps) => {
+  const { user } = useAuth();
+  const Icon = moduleIconMap[moduleType];
+  const isAgenda = moduleType === 'agenda';
+  const isFinancial = moduleType === 'financeiro';
+  const isNewClient = moduleType === 'novocliente';
+  const isReports = moduleType === 'relatorios';
+  const isSimpleSales = moduleType === 'vendasimples';
+  const todayIso = useMemo(() => todayBrasilia(), []);
+
+  const storageKey = `controle_pessoal_${moduleType}_${user?.id ?? 'guest'}`;
+
+  const [records, setRecords] = useState<ControlePessoalRecord[]>([]);
+  const [selectedDate, setSelectedDate] = useState(todayIso);
+  const [form, setForm] = useState({
+    title: '',
+    date: todayIso,
+    amount: '',
+    client: '',
+    notes: '',
+    transactionType: 'entrada' as TransactionType,
+    category: financialCategories[0],
+    paymentMethod: financialPaymentMethods[0],
+    dueDate: todayIso,
+    isPaid: false,
+    phone: '',
+    email: '',
+    document: '',
+    source: clientSources[0],
+    stage: 'novo' as LeadStage,
+    nextContact: todayIso,
+    potentialValue: '',
+    reportType: 'faturamento' as ReportType,
+    reportPeriod: todayIso.slice(0, 7),
+    saleStatus: 'pendente' as SaleStatus,
+    quantity: '1',
+    unitPrice: '',
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem(storageKey);
+    if (!saved) return;
+
+    try {
+      const parsed = JSON.parse(saved) as ControlePessoalRecord[];
+      setRecords(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setRecords([]);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(records));
+  }, [records, storageKey]);
+
+  useEffect(() => {
+    setForm((prev) => ({ ...prev, date: prev.date || selectedDate }));
+  }, [selectedDate]);
+
+  const appointmentCountByDate = useMemo(() => {
+    return records.reduce<Record<string, number>>((acc, record) => {
+      acc[record.date] = (acc[record.date] || 0) + 1;
+      return acc;
+    }, {});
+  }, [records]);
+
+  const datesWithAppointments = useMemo(() => {
+    return Object.keys(appointmentCountByDate).map(fromISODate);
+  }, [appointmentCountByDate]);
+
+  const recordsForSelectedDate = useMemo(() => {
+    return records
+      .filter((record) => record.date === selectedDate)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [records, selectedDate]);
+
+  const monthlyFinancial = useMemo(() => {
+    if (!isFinancial) return { entradas: 0, saidas: 0, saldo: 0 };
+
+    const month = todayBrasilia().slice(0, 7);
+
+    const entradas = records
+      .filter((item) => item.date.startsWith(month) && item.transactionType === 'entrada')
+      .reduce((acc, item) => acc + (item.amount || 0), 0);
+
+    const saidas = records
+      .filter((item) => item.date.startsWith(month) && item.transactionType === 'saida')
+      .reduce((acc, item) => acc + (item.amount || 0), 0);
+
+    return {
+      entradas,
+      saidas,
+      saldo: entradas - saidas,
+    };
+  }, [isFinancial, records]);
+
+  const dailyFinancial = useMemo(() => {
+    if (!isFinancial) return { entradas: 0, saidas: 0, saldo: 0 };
+
+    const entries = records.filter((item) => item.date === selectedDate);
+    const entradas = entries
+      .filter((item) => item.transactionType === 'entrada')
+      .reduce((acc, item) => acc + (item.amount || 0), 0);
+    const saidas = entries
+      .filter((item) => item.transactionType === 'saida')
+      .reduce((acc, item) => acc + (item.amount || 0), 0);
+
+    return {
+      entradas,
+      saidas,
+      saldo: entradas - saidas,
+    };
+  }, [isFinancial, records, selectedDate]);
+
+  const dueAlerts = useMemo(() => {
+    if (!isFinancial) return [];
+
+    const today = todayBrasilia();
+
+    return records
+      .filter((record) => record.transactionType === 'saida' && !!record.dueDate && !record.isPaid)
+      .map((record) => ({
+        ...record,
+        daysToDue: getDayDiff(today, record.dueDate as string),
+      }))
+      .filter((record) => record.daysToDue <= 3)
+      .sort((a, b) => a.daysToDue - b.daysToDue);
+  }, [isFinancial, records]);
+
+  const newClientInsights = useMemo(() => {
+    if (!isNewClient) {
+      return {
+        monthlyNewClients: 0,
+        followupsToday: 0,
+        overdueFollowups: 0,
+        activePipelineValue: 0,
+      };
+    }
+
+    const today = todayBrasilia();
+    const month = today.slice(0, 7);
+
+    const monthlyNewClients = records.filter((item) => item.date.startsWith(month)).length;
+    const followupsToday = records.filter((item) => item.nextContact === today && !isClosedLead(item.stage)).length;
+    const overdueFollowups = records.filter(
+      (item) => !!item.nextContact && item.nextContact < today && !isClosedLead(item.stage)
+    ).length;
+    const activePipelineValue = records
+      .filter((item) => !isClosedLead(item.stage))
+      .reduce((acc, item) => acc + (item.potentialValue || 0), 0);
+
+    return {
+      monthlyNewClients,
+      followupsToday,
+      overdueFollowups,
+      activePipelineValue,
+    };
+  }, [isNewClient, records]);
+
+  const reportsInsights = useMemo(() => {
+    if (!isReports) {
+      return {
+        monthlyCount: 0,
+        averageValue: 0,
+        monthlyResult: 0,
+        totalsByType: [] as { label: string; value: ReportType; total: number }[],
+      };
+    }
+
+    const month = todayBrasilia().slice(0, 7);
+    const monthlyRecords = records.filter((item) => (item.reportPeriod || item.date.slice(0, 7)) === month);
+
+    const monthlyCount = monthlyRecords.length;
+    const averageValue =
+      monthlyCount > 0
+        ? monthlyRecords.reduce((acc, item) => acc + (item.amount || 0), 0) / monthlyCount
+        : 0;
+
+    const receitas = monthlyRecords
+      .filter((item) => item.reportType === 'faturamento' || item.reportType === 'vendas')
+      .reduce((acc, item) => acc + (item.amount || 0), 0);
+
+    const despesas = monthlyRecords
+      .filter((item) => item.reportType === 'despesas')
+      .reduce((acc, item) => acc + (item.amount || 0), 0);
+
+    const totalsByType = reportTypes
+      .map((type) => ({
+        ...type,
+        total: monthlyRecords
+          .filter((item) => item.reportType === type.value)
+          .reduce((acc, item) => acc + (item.amount || 0), 0),
+      }))
+      .filter((item) => item.total > 0)
+      .sort((a, b) => b.total - a.total);
+
+    return {
+      monthlyCount,
+      averageValue,
+      monthlyResult: receitas - despesas,
+      totalsByType,
+    };
+  }, [isReports, records]);
+
+  const simpleSalesInsights = useMemo(() => {
+    if (!isSimpleSales) {
+      return {
+        monthlySalesCount: 0,
+        monthlyRevenue: 0,
+        averageTicket: 0,
+        pendingSales: 0,
+      };
+    }
+
+    const month = todayBrasilia().slice(0, 7);
+    const monthlySales = records.filter((item) => item.date.startsWith(month) && item.saleStatus !== 'cancelado');
+    const monthlyRevenue = monthlySales.reduce((acc, item) => acc + (item.amount || 0), 0);
+
+    return {
+      monthlySalesCount: monthlySales.length,
+      monthlyRevenue,
+      averageTicket: monthlySales.length ? monthlyRevenue / monthlySales.length : 0,
+      pendingSales: records.filter((item) => item.saleStatus === 'pendente').length,
+    };
+  }, [isSimpleSales, records]);
+
+  const stats = useMemo(() => {
+    const today = todayBrasilia();
+    const month = today.slice(0, 7);
+
+    const todayCount = records.filter((item) => item.date === today).length;
+    const monthlyTotal = records
+      .filter((item) => item.date.startsWith(month))
+      .reduce((acc, item) => acc + (item.amount || 0), 0);
+
+    return {
+      todayCount,
+      total: records.length,
+      monthlyTotal,
+    };
+  }, [records]);
+
+  const handleDaySelect = (date?: Date) => {
+    if (!date) return;
+
+    const isoDate = toISODate(date);
+    setSelectedDate(isoDate);
+    setForm((prev) => ({ ...prev, date: isoDate }));
+  };
+
+  const AgendaDayContent = useCallback(
+    ({ date, displayMonth }: DayContentProps) => {
+      const isoDate = toISODate(date);
+      const appointmentsInDate = appointmentCountByDate[isoDate] || 0;
+      const isOutsideMonth = date.getMonth() !== displayMonth.getMonth();
+
+      return (
+        <div className="relative flex h-9 w-9 items-center justify-center">
+          <span>{date.getDate()}</span>
+          {appointmentsInDate > 0 && !isOutsideMonth ? (
+            <span className="absolute -bottom-1 right-0 inline-flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+              {appointmentsInDate}
+            </span>
+          ) : null}
+        </div>
+      );
+    },
+    [appointmentCountByDate]
+  );
+
+  const handleSave = () => {
+    if (!form.title.trim() || !form.date) {
+      toast.error('Preencha o título e a data para salvar.');
+      return;
+    }
+
+    if (isFinancial && (!form.amount || Number(form.amount) <= 0)) {
+      toast.error('Informe um valor válido para o lançamento financeiro.');
+      return;
+    }
+
+    if (isReports && (!form.amount || Number(form.amount) <= 0)) {
+      toast.error('Informe um valor válido para o indicador do relatório.');
+      return;
+    }
+
+    if (isSimpleSales) {
+      const computedByItems = (Number(form.quantity || '0') || 0) * (Number(form.unitPrice || '0') || 0);
+      const informedAmount = Number(form.amount || '0');
+      if (computedByItems <= 0 && informedAmount <= 0) {
+        toast.error('Informe valor da venda ou quantidade e preço unitário.');
+        return;
+      }
+    }
+
+    if (isNewClient && !form.phone.trim() && !form.email.trim()) {
+      toast.error('Informe ao menos telefone ou e-mail para contato do cliente.');
+      return;
+    }
+
+    const computedSaleAmount = (Number(form.quantity || '0') || 0) * (Number(form.unitPrice || '0') || 0);
+
+    const newRecord: ControlePessoalRecord = {
+      id: crypto.randomUUID(),
+      title: form.title.trim(),
+      date: form.date,
+      amount: isSimpleSales
+        ? Number(form.amount || '0') > 0
+          ? Number(form.amount)
+          : computedSaleAmount
+        : form.amount
+          ? Number(form.amount)
+          : undefined,
+      client: form.client.trim() || undefined,
+      notes: form.notes.trim() || undefined,
+      createdAt: new Date().toISOString(),
+      transactionType: isFinancial ? form.transactionType : undefined,
+      category: isFinancial ? form.category : undefined,
+      paymentMethod: isFinancial || isSimpleSales ? form.paymentMethod : undefined,
+      dueDate: isFinancial || isSimpleSales ? form.dueDate : undefined,
+      isPaid: isFinancial ? form.isPaid : undefined,
+      phone: isNewClient ? form.phone.trim() : undefined,
+      email: isNewClient ? form.email.trim() : undefined,
+      document: isNewClient ? form.document.trim() : undefined,
+      source: isNewClient ? form.source : undefined,
+      stage: isNewClient ? form.stage : undefined,
+      nextContact: isNewClient ? form.nextContact : undefined,
+      potentialValue: isNewClient && form.potentialValue ? Number(form.potentialValue) : undefined,
+      reportType: isReports ? form.reportType : undefined,
+      reportPeriod: isReports ? form.reportPeriod : undefined,
+      saleStatus: isSimpleSales ? form.saleStatus : undefined,
+      quantity: isSimpleSales ? Number(form.quantity || '0') || undefined : undefined,
+      unitPrice: isSimpleSales ? Number(form.unitPrice || '0') || undefined : undefined,
+    };
+
+    setRecords((prev) => [newRecord, ...prev]);
+    setSelectedDate(form.date);
+    setForm((prev) => ({
+      ...prev,
+      title: '',
+      amount: '',
+      client: '',
+      notes: '',
+      transactionType: 'entrada',
+      category: financialCategories[0],
+      paymentMethod: financialPaymentMethods[0],
+      dueDate: prev.date,
+      isPaid: false,
+      phone: '',
+      email: '',
+      document: '',
+      source: clientSources[0],
+      stage: 'novo',
+      nextContact: prev.date,
+      potentialValue: '',
+      reportType: 'faturamento',
+      reportPeriod: todayBrasilia().slice(0, 7),
+      saleStatus: 'pendente',
+      quantity: '1',
+      unitPrice: '',
+    }));
+    toast.success('Registro salvo com sucesso.');
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageHeaderCard title={title} subtitle={subtitle} />
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              {isFinancial
+                ? 'Entradas do mês'
+                : isNewClient
+                  ? 'Novos clientes no mês'
+                  : isReports
+                    ? 'Indicadores do mês'
+                    : isSimpleSales
+                      ? 'Vendas concluídas no mês'
+                      : 'Registros hoje'}
+            </p>
+            <p className="text-2xl font-bold">
+              {isFinancial
+                ? formatCurrency(monthlyFinancial.entradas)
+                : isNewClient
+                  ? newClientInsights.monthlyNewClients
+                  : isReports
+                    ? reportsInsights.monthlyCount
+                    : isSimpleSales
+                      ? simpleSalesInsights.monthlySalesCount
+                      : stats.todayCount}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              {isFinancial
+                ? 'Saídas do mês'
+                : isNewClient
+                  ? 'Follow-ups para hoje'
+                  : isReports
+                    ? 'Média por indicador'
+                    : isSimpleSales
+                      ? 'Faturamento mensal'
+                      : 'Total de registros'}
+            </p>
+            <p className="text-2xl font-bold">
+              {isFinancial
+                ? formatCurrency(monthlyFinancial.saidas)
+                : isNewClient
+                  ? newClientInsights.followupsToday
+                  : isReports
+                    ? formatCurrency(reportsInsights.averageValue)
+                    : isSimpleSales
+                      ? formatCurrency(simpleSalesInsights.monthlyRevenue)
+                      : stats.total}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              {isFinancial
+                ? 'Saldo do mês'
+                : isNewClient
+                  ? 'Pipeline ativo estimado'
+                  : isReports
+                    ? 'Resultado estimado'
+                    : isSimpleSales
+                      ? 'Ticket médio'
+                      : 'Movimentação do mês'}
+            </p>
+            <p className="text-2xl font-bold">
+              {isFinancial
+                ? formatCurrency(monthlyFinancial.saldo)
+                : isNewClient
+                  ? formatCurrency(newClientInsights.activePipelineValue)
+                  : isReports
+                    ? formatCurrency(reportsInsights.monthlyResult)
+                    : isSimpleSales
+                      ? formatCurrency(simpleSalesInsights.averageTicket)
+                      : formatCurrency(stats.monthlyTotal)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Icon className="h-5 w-5 text-primary" />
+              {formTitle}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="titulo">
+                {isNewClient ? 'Nome do cliente' : isReports ? 'Indicador / métrica' : isSimpleSales ? 'Produto / serviço' : 'Título'}
+              </Label>
+              <Input
+                id="titulo"
+                placeholder={
+                  isNewClient
+                    ? 'Ex.: Maria da Silva'
+                    : isReports
+                      ? 'Ex.: Receita mensal, churn, novos leads'
+                      : isSimpleSales
+                        ? 'Ex.: Corte social, instalação, pacote mensal'
+                        : 'Ex.: Cliente retorno / Pagamento / Compromisso'
+                }
+                value={form.title}
+                onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+              />
+            </div>
+
+            {isFinancial ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="tipo-lancamento">Tipo</Label>
+                  <select
+                    id="tipo-lancamento"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                    value={form.transactionType}
+                    onChange={(e) => setForm((prev) => ({ ...prev, transactionType: e.target.value as TransactionType }))}
+                  >
+                    <option value="entrada">Entrada</option>
+                    <option value="saida">Saída</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="categoria">Categoria</Label>
+                  <select
+                    id="categoria"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                    value={form.category}
+                    onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
+                  >
+                    {financialCategories.map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : null}
+
+            {isReports ? (
+              <>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="tipo-relatorio">Tipo de indicador</Label>
+                    <select
+                      id="tipo-relatorio"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                      value={form.reportType}
+                      onChange={(e) => setForm((prev) => ({ ...prev, reportType: e.target.value as ReportType }))}
+                    >
+                      {reportTypes.map((type) => (
+                        <option key={type.value} value={type.value}>{type.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="periodo-relatorio">Período de referência</Label>
+                    <Input
+                      id="periodo-relatorio"
+                      type="month"
+                      value={form.reportPeriod}
+                      onChange={(e) => setForm((prev) => ({ ...prev, reportPeriod: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="data">Data do lançamento</Label>
+                    <Input
+                      id="data"
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => {
+                        const nextDate = e.target.value;
+                        setForm((prev) => ({ ...prev, date: nextDate }));
+                        if (nextDate) setSelectedDate(nextDate);
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="valor">Valor do indicador</Label>
+                    <Input
+                      id="valor"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      value={form.amount}
+                      onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cliente">Área / fonte (opcional)</Label>
+                  <Input
+                    id="cliente"
+                    placeholder="Ex.: Comercial, Tráfego, Operação"
+                    value={form.client}
+                    onChange={(e) => setForm((prev) => ({ ...prev, client: e.target.value }))}
+                  />
+                </div>
+              </>
+            ) : isSimpleSales ? (
+              <>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="data">Data da venda</Label>
+                    <Input
+                      id="data"
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => {
+                        const nextDate = e.target.value;
+                        setForm((prev) => ({ ...prev, date: nextDate }));
+                        if (nextDate) setSelectedDate(nextDate);
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="cliente">Cliente</Label>
+                    <Input
+                      id="cliente"
+                      placeholder="Nome do cliente"
+                      value={form.client}
+                      onChange={(e) => setForm((prev) => ({ ...prev, client: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="quantidade-venda">Quantidade</Label>
+                    <Input
+                      id="quantidade-venda"
+                      type="number"
+                      min="1"
+                      value={form.quantity}
+                      onChange={(e) => setForm((prev) => ({ ...prev, quantity: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="valor-unitario">Valor unitário</Label>
+                    <Input
+                      id="valor-unitario"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      value={form.unitPrice}
+                      onChange={(e) => setForm((prev) => ({ ...prev, unitPrice: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="valor">Valor total (opcional)</Label>
+                    <Input
+                      id="valor"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Automático por item"
+                      value={form.amount}
+                      onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="forma-pagamento">Forma de pagamento</Label>
+                    <select
+                      id="forma-pagamento"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                      value={form.paymentMethod}
+                      onChange={(e) => setForm((prev) => ({ ...prev, paymentMethod: e.target.value }))}
+                    >
+                      {financialPaymentMethods.map((method) => (
+                        <option key={method} value={method}>{method}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="status-venda">Status da venda</Label>
+                    <select
+                      id="status-venda"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                      value={form.saleStatus}
+                      onChange={(e) => setForm((prev) => ({ ...prev, saleStatus: e.target.value as SaleStatus }))}
+                    >
+                      {saleStatuses.map((status) => (
+                        <option key={status.value} value={status.value}>{status.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="recebimento">Recebimento até</Label>
+                    <Input
+                      id="recebimento"
+                      type="date"
+                      value={form.dueDate}
+                      onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : isNewClient ? (
+              <>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="telefone-cliente">Telefone / WhatsApp</Label>
+                    <Input
+                      id="telefone-cliente"
+                      placeholder="(11) 99999-9999"
+                      value={form.phone}
+                      onChange={(e) => setForm((prev) => ({ ...prev, phone: formatPhone(e.target.value) }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email-cliente">E-mail</Label>
+                    <Input
+                      id="email-cliente"
+                      type="email"
+                      placeholder="cliente@email.com"
+                      value={form.email}
+                      onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="documento-cliente">CPF (opcional)</Label>
+                    <Input
+                      id="documento-cliente"
+                      placeholder="000.000.000-00"
+                      value={form.document}
+                      onChange={(e) => setForm((prev) => ({ ...prev, document: formatCpf(e.target.value) }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="origem-cliente">Origem do lead</Label>
+                    <select
+                      id="origem-cliente"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                      value={form.source}
+                      onChange={(e) => setForm((prev) => ({ ...prev, source: e.target.value }))}
+                    >
+                      {clientSources.map((source) => (
+                        <option key={source} value={source}>{source}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2 md:col-span-1">
+                    <Label htmlFor="data">Data de entrada</Label>
+                    <Input
+                      id="data"
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => {
+                        const nextDate = e.target.value;
+                        setForm((prev) => ({ ...prev, date: nextDate }));
+                        if (nextDate) setSelectedDate(nextDate);
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-1">
+                    <Label htmlFor="proximo-contato">Próximo contato</Label>
+                    <Input
+                      id="proximo-contato"
+                      type="date"
+                      value={form.nextContact}
+                      onChange={(e) => setForm((prev) => ({ ...prev, nextContact: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-1">
+                    <Label htmlFor="valor-potencial">Valor potencial</Label>
+                    <Input
+                      id="valor-potencial"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      value={form.potentialValue}
+                      onChange={(e) => setForm((prev) => ({ ...prev, potentialValue: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="etapa-funil">Etapa do funil</Label>
+                    <select
+                      id="etapa-funil"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                      value={form.stage}
+                      onChange={(e) => setForm((prev) => ({ ...prev, stage: e.target.value as LeadStage }))}
+                    >
+                      {leadStages.map((stage) => (
+                        <option key={stage.value} value={stage.value}>{stage.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="cliente">Responsável / cliente vinculado (opcional)</Label>
+                    <Input
+                      id="cliente"
+                      placeholder="Ex.: Loja Centro"
+                      value={form.client}
+                      onChange={(e) => setForm((prev) => ({ ...prev, client: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="data">Data</Label>
+                    <Input
+                      id="data"
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => {
+                        const nextDate = e.target.value;
+                        setForm((prev) => ({ ...prev, date: nextDate }));
+                        if (nextDate) {
+                          setSelectedDate(nextDate);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="valor">Valor (opcional)</Label>
+                    <Input
+                      id="valor"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      value={form.amount}
+                      onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                {isFinancial ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="forma-pagamento">Forma de pagamento</Label>
+                      <select
+                        id="forma-pagamento"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                        value={form.paymentMethod}
+                        onChange={(e) => setForm((prev) => ({ ...prev, paymentMethod: e.target.value }))}
+                      >
+                        {financialPaymentMethods.map((method) => (
+                          <option key={method} value={method}>{method}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="vencimento">Vencimento</Label>
+                      <Input
+                        id="vencimento"
+                        type="date"
+                        value={form.dueDate}
+                        onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
+                {isFinancial ? (
+                  <div className="flex items-center gap-2 rounded-md border border-border p-3">
+                    <input
+                      id="pago"
+                      type="checkbox"
+                      checked={form.isPaid}
+                      onChange={(e) => setForm((prev) => ({ ...prev, isPaid: e.target.checked }))}
+                    />
+                    <Label htmlFor="pago">Lançamento já foi pago/recebido</Label>
+                  </div>
+                ) : null}
+
+                <div className="space-y-2">
+                  <Label htmlFor="cliente">Cliente (opcional)</Label>
+                  <Input
+                    id="cliente"
+                    placeholder="Nome do cliente"
+                    value={form.client}
+                    onChange={(e) => setForm((prev) => ({ ...prev, client: e.target.value }))}
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="observacoes">Observações</Label>
+              <Textarea
+                id="observacoes"
+                placeholder={
+                  isNewClient
+                    ? 'Necessidade do cliente, objeções, canal preferido e próximos passos'
+                    : isReports
+                      ? 'Descreva contexto, origem dos dados e conclusões do indicador'
+                      : isSimpleSales
+                        ? 'Anote itens vendidos, condições e observações da venda'
+                        : 'Anote detalhes importantes para não esquecer'
+                }
+                value={form.notes}
+                onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+              />
+            </div>
+
+            <Button onClick={handleSave} className="w-full">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Salvar registro
+            </Button>
+
+            {isAgenda ? (
+              <div className="rounded-md border border-border bg-background p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium">Compromissos em {formatDateBR(selectedDate)}</p>
+                  <Badge variant={recordsForSelectedDate.length ? 'default' : 'outline'}>
+                    {recordsForSelectedDate.length}
+                  </Badge>
+                </div>
+                {recordsForSelectedDate.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhum compromisso para este dia.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {recordsForSelectedDate.map((record) => (
+                      <div key={record.id} className="rounded-md border border-border p-2">
+                        <p className="text-sm font-medium">{record.title}</p>
+                        <p className="text-xs text-muted-foreground">{record.client || 'Sem cliente'} • {record.amount ? formatCurrency(record.amount) : 'Sem valor'}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {isAgenda
+                ? 'Calendário do mês'
+                : isFinancial
+                  ? 'Caixa diário e alertas'
+                  : isNewClient
+                    ? 'Follow-up comercial'
+                    : isReports
+                      ? 'Painel analítico'
+                      : isSimpleSales
+                        ? 'Painel de vendas'
+                        : 'Resumo rápido'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isAgenda ? (
+              <div className="space-y-4">
+                <Calendar
+                  mode="single"
+                  selected={fromISODate(selectedDate)}
+                  onSelect={handleDaySelect}
+                  defaultMonth={fromISODate(selectedDate)}
+                  className="w-full p-3 pointer-events-auto"
+                  modifiers={{ hasAppointments: datesWithAppointments }}
+                  modifiersClassNames={{ hasAppointments: 'font-semibold text-primary' }}
+                  components={{ DayContent: AgendaDayContent }}
+                />
+                <div className="rounded-md border border-border bg-background p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-muted-foreground">Dia selecionado</p>
+                    <Badge variant="secondary">{formatDateBR(selectedDate)}</Badge>
+                  </div>
+                  <p className="mt-2 text-sm">
+                    {recordsForSelectedDate.length === 0
+                      ? 'Dia livre para novos compromissos.'
+                      : `${recordsForSelectedDate.length} compromisso(s) programado(s).`}
+                  </p>
+                </div>
+              </div>
+            ) : isFinancial ? (
+              <div className="space-y-4">
+                <div className="rounded-md border border-border p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">Caixa diário</p>
+                    <Input
+                      type="date"
+                      value={selectedDate}
+                      className="h-8 w-auto"
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="mt-3 grid gap-2 text-sm">
+                    <p className="flex items-center justify-between"><span className="text-muted-foreground">Entradas</span><span>{formatCurrency(dailyFinancial.entradas)}</span></p>
+                    <p className="flex items-center justify-between"><span className="text-muted-foreground">Saídas</span><span>{formatCurrency(dailyFinancial.saidas)}</span></p>
+                    <p className="flex items-center justify-between font-medium"><span>Saldo do dia</span><span>{formatCurrency(dailyFinancial.saldo)}</span></p>
+                  </div>
+                </div>
+
+                <div className="rounded-md border border-border p-3">
+                  <p className="text-sm font-medium">Caixa mensal</p>
+                  <div className="mt-3 grid gap-2 text-sm">
+                    <p className="flex items-center justify-between"><span className="text-muted-foreground">Entradas</span><span>{formatCurrency(monthlyFinancial.entradas)}</span></p>
+                    <p className="flex items-center justify-between"><span className="text-muted-foreground">Saídas</span><span>{formatCurrency(monthlyFinancial.saidas)}</span></p>
+                    <p className="flex items-center justify-between font-medium"><span>Saldo do mês</span><span>{formatCurrency(monthlyFinancial.saldo)}</span></p>
+                  </div>
+                </div>
+
+                <div className="rounded-md border border-border p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-medium">Alertas próximos</p>
+                    <Badge variant={dueAlerts.length ? 'destructive' : 'secondary'}>{dueAlerts.length}</Badge>
+                  </div>
+                  {dueAlerts.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Sem vencimentos críticos nos próximos dias.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {dueAlerts.slice(0, 5).map((alert) => (
+                        <div key={alert.id} className="rounded-md border border-border p-2">
+                          <p className="text-sm font-medium truncate">{alert.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {alert.daysToDue < 0 ? 'Vencido' : alert.daysToDue === 0 ? 'Vence hoje' : `Vence em ${alert.daysToDue} dia(s)`}
+                            {' • '}
+                            {alert.amount ? formatCurrency(alert.amount) : 'Sem valor'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : isNewClient ? (
+              <div className="space-y-4">
+                <div className="rounded-md border border-border p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-medium">Follow-ups atrasados</p>
+                    <Badge variant={newClientInsights.overdueFollowups ? 'destructive' : 'secondary'}>
+                      {newClientInsights.overdueFollowups}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Priorize contatos pendentes para não perder oportunidades.</p>
+                </div>
+
+                <div className="rounded-md border border-border p-3">
+                  <p className="mb-2 text-sm font-medium">Próximos contatos</p>
+                  {records
+                    .filter((record) => !!record.nextContact && !isClosedLead(record.stage))
+                    .sort((a, b) => (a.nextContact || '').localeCompare(b.nextContact || ''))
+                    .slice(0, 5)
+                    .map((record) => (
+                      <div key={record.id} className="mb-2 rounded-md border border-border p-2 last:mb-0">
+                        <p className="truncate text-sm font-medium">{record.title}</p>
+                        <p className="text-xs text-muted-foreground">{record.nextContact ? formatDateBR(record.nextContact) : 'Sem data'} • {record.phone || record.email || 'Sem contato'}</p>
+                      </div>
+                    ))}
+                  {records.filter((record) => !!record.nextContact && !isClosedLead(record.stage)).length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nenhum follow-up agendado no momento.</p>
+                  ) : null}
+                </div>
+              </div>
+            ) : isReports ? (
+              <div className="space-y-4">
+                <div className="rounded-md border border-border p-3">
+                  <p className="mb-2 text-sm font-medium">Distribuição por tipo</p>
+                  {reportsInsights.totalsByType.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Sem dados no período atual.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {reportsInsights.totalsByType.map((type) => (
+                        <div key={type.value} className="flex items-center justify-between gap-2 rounded-md border border-border p-2">
+                          <span className="text-sm">{type.label}</span>
+                          <Badge variant="secondary">{formatCurrency(type.total)}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-md border border-border p-3">
+                  <p className="mb-2 text-sm font-medium">Últimos indicadores</p>
+                  {records.slice(0, 5).map((record) => (
+                    <div key={record.id} className="mb-2 rounded-md border border-border p-2 last:mb-0">
+                      <p className="truncate text-sm font-medium">{record.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(reportTypes.find((type) => type.value === record.reportType)?.label || 'Indicador')} • {(record.reportPeriod || record.date.slice(0, 7))}
+                      </p>
+                    </div>
+                  ))}
+                  {records.length === 0 ? <p className="text-xs text-muted-foreground">Nenhum indicador cadastrado ainda.</p> : null}
+                </div>
+              </div>
+            ) : isSimpleSales ? (
+              <div className="space-y-4">
+                <div className="rounded-md border border-border p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-medium">Vendas pendentes</p>
+                    <Badge variant={simpleSalesInsights.pendingSales > 0 ? 'destructive' : 'secondary'}>
+                      {simpleSalesInsights.pendingSales}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Acompanhe os recebimentos para manter o caixa em dia.</p>
+                </div>
+
+                <div className="rounded-md border border-border p-3">
+                  <p className="mb-2 text-sm font-medium">Últimas vendas</p>
+                  {records.slice(0, 5).map((record) => (
+                    <div key={record.id} className="mb-2 rounded-md border border-border p-2 last:mb-0">
+                      <p className="truncate text-sm font-medium">{record.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(record.client || 'Sem cliente')} • {record.amount ? formatCurrency(record.amount) : 'Sem valor'}
+                      </p>
+                    </div>
+                  ))}
+                  {records.length === 0 ? <p className="text-xs text-muted-foreground">Nenhuma venda cadastrada ainda.</p> : null}
+                </div>
+              </div>
+            ) : records.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Ainda não há registros. Adicione o primeiro para começar seu controle.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {records.slice(0, 5).map((record) => (
+                  <div key={record.id} className="rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="truncate text-sm font-medium">{record.title}</p>
+                      <Badge variant="secondary">{record.date}</Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{record.client || 'Sem cliente vinculado'}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Histórico do módulo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {records.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum registro salvo até o momento.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data cadastro</TableHead>
+                  <TableHead>{isNewClient ? 'Cliente' : isReports ? 'Indicador' : isSimpleSales ? 'Venda' : 'Título'}</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  {isFinancial ? (
+                    <>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead>Status</TableHead>
+                    </>
+                  ) : isNewClient ? (
+                    <>
+                      <TableHead>Contato</TableHead>
+                      <TableHead>Funil</TableHead>
+                      <TableHead>Próx. contato</TableHead>
+                    </>
+                  ) : isReports ? (
+                    <>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Período</TableHead>
+                      <TableHead>Data referência</TableHead>
+                    </>
+                  ) : isSimpleSales ? (
+                    <>
+                      <TableHead>Qtd.</TableHead>
+                      <TableHead>Unitário</TableHead>
+                      <TableHead>Pagamento</TableHead>
+                      <TableHead>Status</TableHead>
+                    </>
+                  ) : (
+                    <TableHead>Data referência</TableHead>
+                  )}
+                  <TableHead>{isNewClient ? 'Potencial' : isReports ? 'Valor indicador' : 'Valor'}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {records.map((record) => (
+                  <TableRow key={record.id}>
+                    <TableCell>{formatDateTime(record.createdAt)}</TableCell>
+                    <TableCell className="font-medium">{record.title}</TableCell>
+                    <TableCell>{record.client || '-'}</TableCell>
+                    {isFinancial ? (
+                      <>
+                        <TableCell>
+                          <Badge variant={record.transactionType === 'saida' ? 'destructive' : 'default'}>
+                            {record.transactionType === 'saida' ? 'Saída' : 'Entrada'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{record.category || '-'}</TableCell>
+                        <TableCell>{record.dueDate || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={record.isPaid ? 'secondary' : 'outline'}>
+                            {record.isPaid ? 'Quitado' : 'Pendente'}
+                          </Badge>
+                        </TableCell>
+                      </>
+                    ) : isNewClient ? (
+                      <>
+                        <TableCell>{record.phone || record.email || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={isClosedLead(record.stage) ? 'secondary' : 'default'}>
+                            {leadStages.find((stage) => stage.value === record.stage)?.label || 'Novo lead'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{record.nextContact ? formatDateBR(record.nextContact) : '-'}</TableCell>
+                      </>
+                    ) : isReports ? (
+                      <>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {reportTypes.find((type) => type.value === record.reportType)?.label || 'Indicador'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{record.reportPeriod || record.date.slice(0, 7)}</TableCell>
+                        <TableCell>{record.date}</TableCell>
+                      </>
+                    ) : isSimpleSales ? (
+                      <>
+                        <TableCell>{record.quantity || 1}</TableCell>
+                        <TableCell>{record.unitPrice ? formatCurrency(record.unitPrice) : '-'}</TableCell>
+                        <TableCell>{record.paymentMethod || '-'}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              record.saleStatus === 'pago'
+                                ? 'secondary'
+                                : record.saleStatus === 'cancelado'
+                                  ? 'destructive'
+                                  : 'outline'
+                            }
+                          >
+                            {saleStatuses.find((status) => status.value === record.saleStatus)?.label || 'Pendente'}
+                          </Badge>
+                        </TableCell>
+                      </>
+                    ) : (
+                      <TableCell>{record.date}</TableCell>
+                    )}
+                    <TableCell>
+                      {isNewClient
+                        ? record.potentialValue
+                          ? formatCurrency(record.potentialValue)
+                          : '-'
+                        : record.amount
+                          ? formatCurrency(record.amount)
+                          : '-'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default ControlePessoalModulePage;
