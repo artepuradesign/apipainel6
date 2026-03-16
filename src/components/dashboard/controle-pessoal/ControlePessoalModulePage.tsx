@@ -705,13 +705,13 @@ const ControlePessoalModulePage = ({ moduleType, title, subtitle, formTitle }: C
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
         <Card className={isAgenda ? 'order-2 lg:order-2' : undefined}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Icon className="h-5 w-5 text-primary" />
-              {isAgenda ? 'Novo compromisso' : formTitle}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Icon className="h-5 w-5 text-primary" />
+                {isAgenda ? (editingRecordId ? 'Editar compromisso' : 'Novo compromisso') : formTitle}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="titulo">
                 {isNewClient ? 'Nome do cliente' : isReports ? 'Indicador / métrica' : isSimpleSales ? 'Produto / serviço' : 'Título'}
